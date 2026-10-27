@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { PixelArt } from "@/components/PixelArt";
 import { bug, wrench, potion, bolt, tree, book } from "@/content/sprites";
 import type { PixelMode, Sprite } from "@/lib/pixelfield";
+import { debugLabs, buildLabs } from "@/content";
 
 /** Home section header: numbered pixel label on a hairline, then one headline style for every chapter. */
 export function Chapter({ n, label, title, sub, right }: { n: string; label: string; title: React.ReactNode; sub?: React.ReactNode; right?: React.ReactNode }) {
@@ -21,26 +22,94 @@ export function Chapter({ n, label, title, sub, right }: { n: string; label: str
 }
 
 const rows = [
-  { n: "01", title: "Debug labs", sprite: bug, href: "/debug", cta: "Open a lab", meta: "Repository debugging", body: "Every lab ships a real codebase, a bug ticket and a red test suite. Read the first failure, form one hypothesis, change one thing." },
-  { n: "02", title: "Bug Hunt", sprite: wrench, href: "/hunt", cta: "Start hunting", meta: "Endless reps", body: "A mutation engine plants fresh, verified regressions in working code. Clear them against the clock until the patterns are reflexes." },
-  { n: "03", title: "Build labs", sprite: potion, href: "/build", cta: "Build something", meta: "Implementation", body: "A spec, some stubs and the tests. Brew rate limiters, queues, caches and auth from scratch until every check turns green." },
+  {
+    n: "01",
+    title: "Debug labs",
+    sprite: bug,
+    href: "/debug",
+    cta: "Open a lab",
+    meta: "Repository debugging",
+    body: "Every lab ships a real codebase, a bug ticket and a red test suite. Read the first failure, form one hypothesis, change one thing.",
+    facts: [
+      ["Labs", String(debugLabs.length)],
+      ["Stack", "Node · Python"],
+      ["Bugs", "~3 per lab"],
+    ],
+    steps: ["Read the ticket", "Run the tests", "Trace", "Fix", "Verify"],
+  },
+  {
+    n: "02",
+    title: "Bug Hunt",
+    sprite: wrench,
+    href: "/hunt",
+    cta: "Start hunting",
+    meta: "Endless reps",
+    body: "A mutation engine plants fresh, verified regressions in working code. Clear them against the clock until the patterns are reflexes.",
+    facts: [
+      ["Bugs", "Endless"],
+      ["Mode", "Timed"],
+      ["Track", "Streaks"],
+    ],
+    steps: ["Get a mutant", "Spot the diff", "Patch", "Next"],
+  },
+  {
+    n: "03",
+    title: "Build labs",
+    sprite: potion,
+    href: "/build",
+    cta: "Build something",
+    meta: "Implementation",
+    body: "A spec, some stubs and the tests. Brew rate limiters, queues, caches and auth from scratch until every check turns green.",
+    facts: [
+      ["Labs", String(buildLabs.length)],
+      ["Start", "Spec + stubs"],
+      ["Done", "All green"],
+    ],
+    steps: ["Read the spec", "Fill the TODOs", "Run", "Ship"],
+  },
 ];
 
-/** The three core modes as editorial rows: number and name, the sprite on its drawing grid, a short note. */
+/** The three core modes: sprite card and a filled spec column, alternating sides. */
 export function PixelRows() {
   return (
     <section className="mx-auto max-w-7xl px-4 pt-16">
-      {rows.map((r) => (
-        <div key={r.n} className="grid items-center gap-6 border-t border-line py-10 md:grid-cols-[1fr_minmax(0,1.1fr)_1fr]">
-          <div className="self-start">
-            <div className="px-label text-orange">{r.n}</div>
-            <h3 className="mt-3 text-4xl font-semibold leading-[1] tracking-[-0.03em] md:text-5xl">{r.title}</h3>
-            <div className="px-label mt-3 text-dim">{r.meta}</div>
+      {rows.map((r, k) => (
+        <div key={r.n} className="grid items-center gap-8 border-t border-line py-12 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-14">
+          <div className={k % 2 ? "md:order-2" : ""}>
+            <SpriteCard sprite={r.sprite} label={`${r.title} pixel illustration`} tl={`fig. ${r.n}`} br="poke it" />
           </div>
-          <SpriteCard sprite={r.sprite} label={`${r.title} pixel illustration`} tl={`fig. ${r.n}`} br="poke it" />
-          <div className="self-end md:text-right">
-            <p className="text-[15.5px] leading-relaxed text-muted">{r.body}</p>
-            <Link href={r.href} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-orange hover:underline">
+          <div>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <span className="px-label text-orange">
+                {r.n} / {r.meta}
+              </span>
+              <span className="px-label text-dim">{["Break", "Fix", "Build"][k]} it</span>
+            </div>
+            <h3 className="mt-6 text-5xl font-semibold leading-[1] tracking-[-0.035em] md:text-6xl">{r.title}</h3>
+            <p className="mt-4 max-w-lg text-[16px] leading-relaxed text-muted">{r.body}</p>
+
+            <dl className="mt-8 grid grid-cols-3 border-y border-line">
+              {r.facts.map(([l, v], i) => (
+                <div key={l} className={`py-4 ${i ? "border-l border-line pl-4" : ""}`}>
+                  <dt className="px-label text-dim">{l}</dt>
+                  <dd className="mt-1 text-xl font-semibold tracking-tight">{v}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <ol className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-2">
+              {r.steps.map((st, i) => (
+                <li key={st} className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 rounded-md border border-line bg-panel px-2 py-1">
+                    <span className="px-label text-orange">{i + 1}</span>
+                    <span className="text-[13px] font-medium">{st}</span>
+                  </span>
+                  {i < r.steps.length - 1 && <span className="px-label text-dim">→</span>}
+                </li>
+              ))}
+            </ol>
+
+            <Link href={r.href} className="vx-btn mt-8 inline-flex items-center gap-2 bg-orange px-4 py-2.5 text-sm font-semibold text-white [--btn-edge:var(--orange-edge)]">
               {r.cta} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
