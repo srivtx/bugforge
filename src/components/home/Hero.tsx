@@ -1,21 +1,32 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
-import { Bug, Hammer, ArrowRight, MousePointerClick } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bug, Hammer, ArrowRight } from "lucide-react";
 import { PixelArt } from "@/components/PixelArt";
-import { bug, wrench, potion, tree } from "@/content/sprites";
+import { bug, wrench, potion, tree, bolt, book } from "@/content/sprites";
+import type { PixelMode } from "@/lib/pixelfield";
 
-// Click the card to cycle the mascot: each sprite re-assembles from scattered pixels.
-const STAGES = [
-  { sprite: bug, tag: "debug", label: "Find the regression" },
-  { sprite: wrench, tag: "hunt", label: "Fix it against the clock" },
-  { sprite: potion, tag: "build", label: "Brew it from TODOs" },
-  { sprite: tree, tag: "dsa", label: "Crack the pattern" },
+// The hero poster flips every few seconds: each cell of the old sprite flies to the new one,
+// and the render mode and flat paper colour change with it. Click to flip early, hover to hold.
+const STAGES: { sprite: typeof bug; mode: PixelMode; bg: string; tag: string; label: string }[] = [
+  { sprite: bug, mode: "original", bg: "#b7acff", tag: "debug", label: "Find the regression" },
+  { sprite: wrench, mode: "halftone", bg: "#ffd23f", tag: "hunt", label: "Fix it against the clock" },
+  { sprite: potion, mode: "dither", bg: "#8fe0bf", tag: "build", label: "Brew it from TODOs" },
+  { sprite: tree, mode: "mosaic", bg: "#ffb38a", tag: "dsa", label: "Crack the pattern" },
+  { sprite: bolt, mode: "rounded", bg: "#7d6bff", tag: "drills", label: "Spot it in seconds" },
+  { sprite: book, mode: "cross", bg: "#9fd4ff", tag: "learn", label: "Know why it broke" },
 ];
+const HOLD = 3400;
 
 export function Hero({ counts }: { counts: { debug: number; build: number; dsa: number; drills: number } }) {
   const [i, setI] = useState(0);
+  const [held, setHeld] = useState(false);
   const s = STAGES[i];
+  useEffect(() => {
+    if (held || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const id = setTimeout(() => setI((n) => (n + 1) % STAGES.length), HOLD);
+    return () => clearTimeout(id);
+  }, [i, held]);
   const stats = [
     [counts.debug, "debug labs"],
     [counts.build, "build labs"],
@@ -52,16 +63,26 @@ export function Hero({ counts }: { counts: { debug: number; build: number; dsa: 
           </div>
         </div>
 
-        <button type="button" onClick={() => setI((i + 1) % STAGES.length)} aria-label={`Show next mascot (now: ${s.label})`} className="group relative mx-auto aspect-square w-full max-w-[520px] cursor-pointer overflow-hidden rounded-2xl border border-line bg-[#fbf8f2] text-left">
-          <PixelArt sprite={s.sprite} grid="lines" gridColor="rgba(128,118,104,0.16)" pad={3} label={s.label} className="absolute inset-0 h-full w-full" />
-          <span className="px-label absolute left-3 top-3 text-[#8c889a]">fig. {String(i + 1).padStart(2, "0")} — {s.tag}</span>
-          <span className="px-label absolute right-3 top-3 text-[#8c889a]">
-            {i + 1}/{STAGES.length}
+        <button
+          type="button"
+          onClick={() => setI((i + 1) % STAGES.length)}
+          onPointerEnter={() => setHeld(true)}
+          onPointerLeave={() => setHeld(false)}
+          aria-label={`Show next illustration (now: ${s.label})`}
+          className="group relative mx-auto aspect-square w-full max-w-[520px] cursor-pointer overflow-hidden rounded-2xl text-left text-[#17151c] shadow-[0_6px_0_rgba(23,21,28,0.9)] ring-2 ring-[#17151c] transition-[background-color] duration-700"
+          style={{ background: s.bg }}
+        >
+          <PixelArt sprite={s.sprite} mode={s.mode} grid="lines" gridColor="rgba(23,21,28,0.1)" pad={3} label={s.label} className="absolute inset-0 h-full w-full" />
+          <span className="px-label absolute left-4 top-4">
+            fig. {String(i + 1).padStart(2, "0")} — {s.tag}
           </span>
-          <span className="absolute inset-x-3 bottom-3 flex items-end justify-between">
-            <span className="text-sm font-semibold text-[#17151c]">{s.label}</span>
-            <span className="px-label flex items-center gap-1 text-[#8c889a] transition group-hover:text-[#17151c]">
-              <MousePointerClick className="h-3 w-3" /> click
+          <span className="px-label absolute right-4 top-4">{s.mode === "cross" ? "cross-stitch" : s.mode}</span>
+          <span className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-4">
+            <span className="text-base font-semibold">{s.label}</span>
+            <span className="flex gap-1" aria-hidden>
+              {STAGES.map((_, k) => (
+                <span key={k} className={`h-2 w-2 ${k === i ? "bg-[#17151c]" : "bg-[#17151c]/20"}`} />
+              ))}
             </span>
           </span>
         </button>

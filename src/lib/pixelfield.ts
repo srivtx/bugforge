@@ -93,6 +93,14 @@ export class PixelField {
   private w = 0;
   private h = 0;
   mouse = { x: -1e4, y: -1e4, sx: -1e4, sy: -1e4, on: false };
+  /** Start position (px) of each cell while morphing from the previous sprite, or null. */
+  private from: Float32Array | null = null;
+  private morphAt = 0;
+
+  /** Sprites with sparks or halftone shimmer keep animating while visible. */
+  get live() {
+    return !!this.sprite.sparks?.length || this.mode === "halftone";
+  }
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -123,6 +131,24 @@ export class PixelField {
     this.oy = (r.height - l.h * this.cs) / 2;
   }
 
+  /** Swaps to another sprite/mode. With a start time, each new cell flies in from a random old cell along a curved path. */
+  morph(sprite: Sprite, mode: PixelMode, at: number | null) {
+    if (sprite === this.sprite && mode === this.mode) return;
+    const old = this.cells.map((c) => [this.ox + c.i * this.cs, this.oy + c.j * this.cs]);
+    this.sprite = sprite;
+    this.mode = mode;
+    this.resize();
+    this.from = null;
+    if (at === null || !old.length) return;
+    this.from = new Float32Array(this.cells.length * 2);
+    this.cells.forEach((c, k) => {
+      const o = old[Math.floor(c.shade * old.length)];
+      this.from![k * 2] = o[0];
+      this.from![k * 2 + 1] = o[1];
+    });
+    this.morphAt = at;
+  }
+
   /** Draws one frame. `scatter` (0..1) throws cells outward; `time` drives sparks and halftone shimmer. Returns true while the pointer is still settling. */
   draw(scatter = 0, time = 0) {
     const { ctx, cs, ox, oy, mode } = this;
@@ -140,8 +166,23 @@ export class PixelField {
       return p;
     };
 
-    for (const c of this.cells) {
+    const from = this.from;
+    const MORPH = 0.85;
+    let morphing = false;
+    for (let k = 0; k < this.cells.length; k++) {
+      const c = this.cells[k];
       let x = ox + c.i * cs, y = oy + c.j * cs;
+      if (from) {
+        const t = Math.min(1, Math.max(0, (time - this.morphAt - c.shade * 0.3) / MORPH));
+        if (t < 1) {
+          morphing = true;
+          const e = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+          const fx = from[k * 2], fy = from[k * 2 + 1], dx = x - fx, dy = y - fy;
+          const swirl = Math.sin(Math.PI * e) * 0.35;
+          x = fx + dx * e - dy * swirl;
+          y = fy + dy * e + dx * swirl;
+        }
+      }
       if (scatter) {
         const a = c.shade * Math.PI * 2;
         x += Math.cos(a) * scatter * cs * 14 * (0.4 + c.shade);
@@ -204,7 +245,8 @@ export class PixelField {
       }
     }
     this.drawSparks(time, scatter);
-    return m.on || Math.abs(m.sx - m.x) > 0.5;
+    if (from && !morphing) this.from = null;
+    return morphing || m.on || Math.abs(m.sx - m.x) > 0.5;
   }
 
   private drawGrid() {
