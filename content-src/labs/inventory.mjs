@@ -117,7 +117,7 @@ import Product from '../models/Product.js';
 let p;
 beforeEach(async () => {
   await Product.deleteMany({});
-  p = await Product.create({ sku: 'ECHO-4', name: 'Echo Dot', stock: 5, price: 49 });
+  p = await Product.create({ sku: 'SPK-4', name: 'Smart Speaker', stock: 5, price: 49 });
 });
 
 describe('validation & error mapping', () => {
@@ -128,7 +128,7 @@ describe('validation & error mapping', () => {
   });
 
   test('duplicate sku -> 409', async () => {
-    const res = await request(app).post('/api/products').send({ sku: 'ECHO-4', name: 'dup', stock: 1, price: 1 });
+    const res = await request(app).post('/api/products').send({ sku: 'SPK-4', name: 'dup', stock: 1, price: 1 });
     expect(res.status).toBe(409);
   });
 
@@ -172,7 +172,7 @@ export default {
   difficulty: "Medium",
   minutes: 30,
   tagline: "The error handler never runs and stock goes negative.",
-  ticket: `**INV-431 · Overselling during Prime Day load test**
+  ticket: `**INV-431 · Overselling during peak-sale load test**
 
 During the load test the warehouse dashboard showed **negative stock** for several SKUs, and the stock endpoint shows numbers that are always **one update behind**. Clients also report that bad input returns an **HTML 500 page** instead of our JSON error format.
 

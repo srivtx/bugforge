@@ -97,50 +97,50 @@ import app from '../app.js';
 import Product from '../models/Product.js';
 import { store } from '../middleware/cache.js';
 
-let kindle, echo, spy;
+let reader, speaker, spy;
 
 beforeEach(async () => {
   store.clear();
   await Product.deleteMany({});
-  kindle = await Product.create({ name: 'Kindle', price: 99 });
-  echo = await Product.create({ name: 'Echo', price: 49 });
+  reader = await Product.create({ name: 'E-Reader', price: 99 });
+  speaker = await Product.create({ name: 'Speaker', price: 49 });
   spy = jest.spyOn(Product, 'findById');
 });
 
 afterEach(() => spy.mockRestore());
 
 test('first GET hits the DB and returns the product', async () => {
-  const res = await request(app).get(\`/api/products/\${kindle.id}\`);
+  const res = await request(app).get(\`/api/products/\${reader.id}\`);
   expect(res.status).toBe(200);
-  expect(res.body.name).toBe('Kindle');
+  expect(res.body.name).toBe('E-Reader');
 });
 
 test('second GET within TTL is served from cache (1 DB call)', async () => {
-  await request(app).get(\`/api/products/\${kindle.id}\`);
-  const res = await request(app).get(\`/api/products/\${kindle.id}\`);
-  expect(res.body.name).toBe('Kindle');
+  await request(app).get(\`/api/products/\${reader.id}\`);
+  const res = await request(app).get(\`/api/products/\${reader.id}\`);
+  expect(res.body.name).toBe('E-Reader');
   expect(spy).toHaveBeenCalledTimes(1);
 });
 
 test('different ids never share a cache entry', async () => {
-  await request(app).get(\`/api/products/\${kindle.id}\`);
-  const res = await request(app).get(\`/api/products/\${echo.id}\`);
-  expect(res.body.name).toBe('Echo');
+  await request(app).get(\`/api/products/\${reader.id}\`);
+  const res = await request(app).get(\`/api/products/\${speaker.id}\`);
+  expect(res.body.name).toBe('Speaker');
 });
 
 test('entry expires after 30s', async () => {
   jest.useFakeTimers();
-  await request(app).get(\`/api/products/\${kindle.id}\`);
+  await request(app).get(\`/api/products/\${reader.id}\`);
   jest.advanceTimersByTime(31 * 1000);
-  await request(app).get(\`/api/products/\${kindle.id}\`);
+  await request(app).get(\`/api/products/\${reader.id}\`);
   expect(spy).toHaveBeenCalledTimes(2);
   jest.useRealTimers();
 });
 
 test('PUT invalidates the cached entry', async () => {
-  await request(app).get(\`/api/products/\${kindle.id}\`);
-  await request(app).put(\`/api/products/\${kindle.id}\`).send({ price: 79 });
-  const res = await request(app).get(\`/api/products/\${kindle.id}\`);
+  await request(app).get(\`/api/products/\${reader.id}\`);
+  await request(app).put(\`/api/products/\${reader.id}\`).send({ price: 79 });
+  const res = await request(app).get(\`/api/products/\${reader.id}\`);
   expect(res.body.price).toBe(79);
 });
 `;

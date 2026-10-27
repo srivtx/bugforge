@@ -72,7 +72,7 @@ export function TestPanel({ run, running }: { run: LabRun | null; running: boole
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  className="mx-4 mb-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-rose/25 bg-rose/[0.06] px-3 py-2.5 font-mono text-[12px] leading-relaxed text-[#ffb3c7]"
+                  className="mx-4 mb-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-rose/25 bg-rose/[0.06] px-3 py-2.5 font-mono text-[12px] leading-relaxed text-rose"
                 >
                   {t.error}
                 </motion.pre>

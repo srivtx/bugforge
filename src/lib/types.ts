@@ -37,6 +37,10 @@ export interface TraceStep {
   kind: "middleware" | "handler" | "router" | "db" | "error";
   name: string;
   detail: string;
+  coll?: string; // db steps: collection (model) name
+  size?: number; // db steps: documents in the collection after the op
+  matched?: number; // db steps: documents matched / affected
+  op?: string;
 }
 
 export interface Trace {

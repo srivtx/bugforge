@@ -76,8 +76,8 @@ let traces = [];
 let serverLogs = [];
 let activeReq = null;
 
-function traceStep(kind, name, detail) {
-  if (activeReq) activeReq.steps.push({ kind, name, detail });
+function traceStep(kind, name, detail, extra) {
+  if (activeReq) activeReq.steps.push({ kind, name, detail, ...(extra || {}) });
 }
 
 /* ------------------------------------------------------------------ ESM -> CJS */
@@ -869,7 +869,7 @@ function createMongoose() {
         const i = store().findIndex((d) => String(d._id) === String(this._id));
         if (i >= 0) store()[i] = rec;
         else store().push(rec);
-        traceStep("db", `${name}.save()`, this.__isNew ? "insert" : "update");
+        traceStep("db", `${name}.save()`, this.__isNew ? "insert" : "update", { coll: name, size: store().length, matched: 1, op: this.__isNew ? "insert" : "update" });
         this.__isNew = false;
         this.__snap = JSON.stringify(this.toObject());
         for (const h of schema.hooks.post.save || []) await h.call(this, this);
@@ -1026,18 +1026,19 @@ function createMongoose() {
     const findRecs = (filter) => store().filter((r) => matches(r, castFilter(filter)));
     const label = (op, filter) => `${name}.${op}(${filter && Object.keys(filter).length ? pretty(filter).slice(0, 60) : ""})`;
 
-    Model.find = (filter = {}) => new Query("find", (q) => (traceStep("db", label("find", filter), ""), finalize(q, findRecs(filter), false)));
-    Model.findOne = (filter = {}) => new Query("findOne", (q) => (traceStep("db", label("findOne", filter), ""), finalize(q, findRecs(filter).slice(0, q._sort ? undefined : 1), true)));
+    const dbStep = (op, filter, matched, extra) => traceStep("db", label(op, filter), extra || (op.startsWith("find") && !op.includes("And") ? `→ ${matched} match${matched === 1 ? "" : "es"}` : ""), { coll: name, size: store().length, matched, op });
+    Model.find = (filter = {}) => new Query("find", (q) => finalize(q, findRecs(filter), false).then((r) => (dbStep("find", filter, r.length), r)));
+    Model.findOne = (filter = {}) => new Query("findOne", (q) => finalize(q, findRecs(filter).slice(0, q._sort ? undefined : 1), true).then((r) => (dbStep("findOne", filter, r ? 1 : 0, r ? "→ found" : "→ null"), r)));
     Model.findById = (id) =>
       new Query("findById", (q) => {
-        traceStep("db", `${name}.findById(${pretty(idStr(id))})`, "");
-        if (id === undefined || id === null) return Promise.resolve(null);
-        if (!ObjectId.isValid(idStr(id))) return Promise.reject(new CastError(id, "_id"));
-        return finalize(q, findRecs({ _id: idStr(id) }), true);
+        const step = (m, d) => traceStep("db", `${name}.findById(${pretty(idStr(id))})`, d, { coll: name, size: store().length, matched: m, op: "findById" });
+        if (id === undefined || id === null) return (step(0, "→ null"), Promise.resolve(null));
+        if (!ObjectId.isValid(idStr(id))) return (step(0, "CastError"), Promise.reject(new CastError(id, "_id")));
+        return finalize(q, findRecs({ _id: idStr(id) }), true).then((r) => (step(r ? 1 : 0, r ? "→ found" : "→ null"), r));
       });
-    Model.countDocuments = (filter = {}) => new Query("count", async () => (traceStep("db", label("countDocuments", filter), ""), findRecs(filter).length));
+    Model.countDocuments = (filter = {}) => new Query("count", async () => { const n = findRecs(filter).length; dbStep("countDocuments", filter, n, `= ${n}`); return n; });
     Model.estimatedDocumentCount = () => new Query("count", async () => store().length);
-    Model.exists = (filter = {}) => new Query("exists", async () => (traceStep("db", label("exists", filter), ""), findRecs(filter)[0] ? { _id: findRecs(filter)[0]._id } : null));
+    Model.exists = (filter = {}) => new Query("exists", async () => { const r = findRecs(filter)[0]; dbStep("exists", filter, r ? 1 : 0, r ? "→ yes" : "→ no"); return r ? { _id: r._id } : null; });
     Model.create = async (data) => {
       if (Array.isArray(data)) {
         const out = [];
@@ -1056,15 +1057,15 @@ function createMongoose() {
       });
     Model.deleteOne = (filter = {}) =>
       new Query("deleteOne", async () => {
-        traceStep("db", label("deleteOne", filter), "");
         const i = store().findIndex((r) => matches(r, castFilter(filter)));
+        dbStep("deleteOne", filter, i >= 0 ? 1 : 0, i >= 0 ? "deleted 1" : "deleted 0");
         if (i >= 0) store().splice(i, 1);
         return { deletedCount: i >= 0 ? 1 : 0, acknowledged: true };
       });
     const findAndDelete = (filter, op) =>
       new Query(op, async (q) => {
-        traceStep("db", label(op, filter), "");
         const i = store().findIndex((r) => matches(r, castFilter(filter)));
+        dbStep(op, filter, i >= 0 ? 1 : 0, i >= 0 ? "deleted 1" : "→ null");
         if (i < 0) return null;
         const [rec] = store().splice(i, 1);
         return finalize(q, [rec], true);
@@ -1078,8 +1079,8 @@ function createMongoose() {
     Model.findByIdAndRemove = Model.findByIdAndDelete;
     const findAndUpdate = (filter, update, opts = {}, op) =>
       new Query(op, async (q) => {
-        traceStep("db", label(op, filter), opts.new ? "{ new: true }" : "returns OLD doc");
         const recs = findRecs(filter);
+        dbStep(op, filter, recs.length ? 1 : 0, recs.length ? (opts.new ? "updated · returns new" : "updated · returns OLD doc") : "→ null");
         let rec = recs[0];
         if (!rec) {
           if (!opts.upsert) return null;
@@ -1104,9 +1105,9 @@ function createMongoose() {
     };
     const upd = (many) => (filter, update) =>
       new Query("update", async () => {
-        traceStep("db", label(many ? "updateMany" : "updateOne", filter), "");
         const recs = findRecs(filter);
         const target = many ? recs : recs.slice(0, 1);
+        dbStep(many ? "updateMany" : "updateOne", filter, target.length, `modified ${target.length}`);
         for (const rec of target) {
           const after = clonePersist(applyUpdate(rec, update).toObject());
           store()[store().indexOf(rec)] = after;

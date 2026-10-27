@@ -1,8 +1,31 @@
 "use client";
 import Editor, { type Monaco, type OnMount } from "@monaco-editor/react";
 import { useRef } from "react";
+import { useTheme } from "@/lib/theme";
 
-function defineTheme(monaco: Monaco) {
+export function defineTheme(monaco: Monaco) {
+  monaco.editor.defineTheme("bugforge-light", {
+    base: "vs",
+    inherit: true,
+    rules: [
+      { token: "comment", foreground: "9a94a8", fontStyle: "italic" },
+      { token: "keyword", foreground: "d9570a" },
+      { token: "string", foreground: "0b8a5f" },
+      { token: "number", foreground: "b07800" },
+      { token: "type", foreground: "0a86a3" },
+    ],
+    colors: {
+      "editor.background": "#fffdf8",
+      "editor.foreground": "#1d1b26",
+      "editorLineNumber.foreground": "#c9c1b0",
+      "editorLineNumber.activeForeground": "#ff7a1a",
+      "editor.lineHighlightBackground": "#f6f2ea",
+      "editor.selectionBackground": "#6c5cf533",
+      "editorCursor.foreground": "#ff7a1a",
+      "editorGutter.background": "#fffdf8",
+      "editorWidget.background": "#fffdf8",
+    },
+  });
   monaco.editor.defineTheme("bugforge", {
     base: "vs-dark",
     inherit: true,
@@ -16,7 +39,7 @@ function defineTheme(monaco: Monaco) {
       { token: "delimiter", foreground: "9a9ab5" },
     ],
     colors: {
-      "editor.background": "#0b0b13",
+      "editor.background": "#10121f",
       "editor.foreground": "#ececf4",
       "editorLineNumber.foreground": "#3a3a58",
       "editorLineNumber.activeForeground": "#ff9a3c",
@@ -24,7 +47,7 @@ function defineTheme(monaco: Monaco) {
       "editor.selectionBackground": "#8b7bff44",
       "editorCursor.foreground": "#ff9a3c",
       "editorIndentGuide.background1": "#1d1d2e",
-      "editorGutter.background": "#0b0b13",
+      "editorGutter.background": "#10121f",
       "scrollbarSlider.background": "#2f2f4a88",
       "editorWidget.background": "#11111c",
     },
@@ -56,6 +79,7 @@ export function CodeEditor({
   onRun?: () => void;
   highlightLines?: number[];
 }) {
+  const theme = useTheme();
   const runRef = useRef(onRun);
   runRef.current = onRun;
   const decoRef = useRef<string[]>([]);
@@ -80,7 +104,7 @@ export function CodeEditor({
       path={path}
       language={language}
       value={value}
-      theme="bugforge"
+      theme={theme === "dark" ? "bugforge" : "bugforge-light"}
       beforeMount={defineTheme}
       onMount={(editor, monaco) => {
         editorRef.current = editor;

@@ -12,7 +12,8 @@ import { runLab } from "@/lib/runners";
 import { update, loadDraft, saveDraft, clearDraft, useProgress } from "@/lib/progress";
 import { Markdown } from "@/components/Markdown";
 import { DifficultyBadge, Button, Pill } from "@/components/ui";
-import { langFor } from "@/components/CodeEditor";
+import { langFor, defineTheme } from "@/components/CodeEditor";
+import { useTheme } from "@/lib/theme";
 import { TestBlocks, TestPanel, LogsPanel } from "./TestPanel";
 import { RequestFlow } from "./RequestFlow";
 
@@ -53,6 +54,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
   const editable = useMemo(() => Object.keys(starting), [starting]);
   const allPaths = useMemo(() => [...editable, ...Object.keys(lab.tests)], [editable, lab.tests]);
   const progress = useProgress();
+  const theme = useTheme();
 
   const [files, setFiles] = useState<Record<string, string>>(starting);
   const [active, setActive] = useState<string>(() => editable.find((p) => /controller|service|middleware|solution|limiter/i.test(p)) ?? editable[0]);
@@ -148,7 +150,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
   return (
     <div className="flex h-[calc(100dvh-3.5rem)] flex-col bg-bg">
       {/* top bar */}
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line bg-bg-2/80 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b-2 border-line bg-panel px-3 py-2">
         <Link href={backHref ?? (lab.kind === "build" ? "/build" : "/debug")} className="rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-text">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -296,7 +298,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="scroll-thin flex shrink-0 overflow-x-auto border-b border-line bg-bg-2/60">
             {openTabs.map((p) => (
-              <button key={p} onClick={() => setActive(p)} className={clsx("flex shrink-0 items-center gap-1.5 border-r border-line px-3 py-2 font-mono text-xs", active === p ? "bg-[#0b0b13] text-text shadow-[inset_0_2px_0_0_var(--orange)]" : "text-dim hover:text-muted")}>
+              <button key={p} onClick={() => setActive(p)} className={clsx("flex shrink-0 items-center gap-1.5 border-r border-line px-3 py-2 font-mono text-xs", active === p ? "bg-code text-text shadow-[inset_0_3px_0_0_var(--orange)]" : "text-dim hover:text-muted")}>
                 {isTest(p) && <Lock className="h-3 w-3" />}
                 {p}
                 {changed(p) && <span className="h-1.5 w-1.5 rounded-full bg-orange" />}
@@ -389,7 +391,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
                 </div>
               </div>
               <div className="min-h-0 flex-1">
-                <DiffEditor original={files[diffFor] ?? ""} modified={lab.fixes[diffFor]} language={langFor(diffFor)} theme="vs-dark" options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, fontSize: 13 }} />
+                <DiffEditor original={files[diffFor] ?? ""} modified={lab.fixes[diffFor]} language={langFor(diffFor)} beforeMount={defineTheme} theme={theme === "dark" ? "bugforge" : "bugforge-light"} options={{ readOnly: true, renderSideBySide: true, minimap: { enabled: false }, fontSize: 13 }} />
               </div>
             </motion.div>
           </motion.div>

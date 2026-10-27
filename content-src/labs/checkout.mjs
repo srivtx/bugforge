@@ -7,7 +7,7 @@ const pricingBuggy = `// Pricing rules for the checkout service.
 
 export const COUPONS = {
   SAVE10: { percent: 10 },
-  PRIME20: { percent: 20, minSubtotal: 100 },
+  BIG20: { percent: 20, minSubtotal: 100 },
 };
 
 export const TAX_RATE = 0.08;
@@ -44,7 +44,7 @@ const pricingFixed = `// Pricing rules for the checkout service.
 
 export const COUPONS = {
   SAVE10: { percent: 10 },
-  PRIME20: { percent: 20, minSubtotal: 100 },
+  BIG20: { percent: 20, minSubtotal: 100 },
 };
 
 export const TAX_RATE = 0.08;
@@ -131,8 +131,8 @@ describe('priceCart (unit)', () => {
     expect(r).toEqual({ subtotal: 50, discount: 5, tax: 3.6, total: 48.6 });
   });
 
-  test('PRIME20 applies at exactly the minimum subtotal', () => {
-    const r = priceCart([{ sku: 'a', price: 100, qty: 1 }], 'PRIME20');
+  test('BIG20 applies at exactly the minimum subtotal', () => {
+    const r = priceCart([{ sku: 'a', price: 100, qty: 1 }], 'BIG20');
     expect(r.discount).toBe(20);
     expect(r.total).toBe(86.4);
   });

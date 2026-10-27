@@ -135,7 +135,7 @@ export default {
   difficulty: "Medium",
   minutes: 20,
   tagline: "One bad device token kills the whole campaign; every greeting says 'Hi undefined'.",
-  ticket: `**MKT-204 · Prime Day campaign only partially sent**
+  ticket: `**MKT-204 · Peak-sale campaign only partially sent**
 
 The campaign job crashed with \`no device token\` and **nobody** got a report of what was delivered. The deferred greeting tasks also produce \`"Hi undefined, …"\` for every customer.
 

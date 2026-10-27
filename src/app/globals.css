@@ -1,24 +1,87 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------------------------------------------------------------- tokens
+   Light is the base; dark applies via prefers-color-scheme (unless the user forced light)
+   or an explicit data-theme="dark". */
 :root {
-  --bg: #07070c;
-  --bg-2: #0d0d16;
-  --panel: #11111c;
-  --panel-2: #171726;
-  --line: #24243a;
-  --line-2: #2f2f4a;
-  --text: #ececf4;
-  --muted: #9a9ab5;
-  --dim: #6b6b88;
+  --bg: #f4f1ea;
+  --bg-2: #ece7dc;
+  --panel: #fffdf8;
+  --panel-2: #f6f2ea;
+  --line: #e2dccf;
+  --line-2: #d3cbbb;
+  --edge: #d6cebd;
+  --shadow: rgba(80, 60, 30, 0.18);
+  --text: #1d1b26;
+  --muted: #5d5a6b;
+  --dim: #8c889a;
+  --orange: #ff7a1a;
+  --orange-edge: #c75500;
+  --amber: #e9a100;
+  --violet: #6c5cf5;
+  --violet-edge: #4b3dc4;
+  --cyan: #0aa6c9;
+  --mint: #10a874;
+  --mint-edge: #0a7a54;
+  --rose: #ea3a6a;
+  --code-bg: #fffdf8;
+  --cube-stroke: rgba(120, 100, 70, 0.10);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d0e18;
+    --bg-2: #121426;
+    --panel: #171a2e;
+    --panel-2: #1e2238;
+    --line: #2a2f4c;
+    --line-2: #363c5e;
+    --edge: #07080f;
+    --shadow: rgba(0, 0, 0, 0.55);
+    --text: #eef0fa;
+    --muted: #a3a7c4;
+    --dim: #6f7494;
+    --orange: #ff9a3c;
+    --orange-edge: #b35a10;
+    --amber: #ffc857;
+    --violet: #8f81ff;
+    --violet-edge: #5143c9;
+    --cyan: #3dd6f5;
+    --mint: #3ee6a8;
+    --mint-edge: #179467;
+    --rose: #ff5c8a;
+    --code-bg: #10121f;
+    --cube-stroke: rgba(150, 160, 230, 0.07);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d0e18;
+  --bg-2: #121426;
+  --panel: #171a2e;
+  --panel-2: #1e2238;
+  --line: #2a2f4c;
+  --line-2: #363c5e;
+  --edge: #07080f;
+  --shadow: rgba(0, 0, 0, 0.55);
+  --text: #eef0fa;
+  --muted: #a3a7c4;
+  --dim: #6f7494;
   --orange: #ff9a3c;
+  --orange-edge: #b35a10;
   --amber: #ffc857;
-  --violet: #8b7bff;
+  --violet: #8f81ff;
+  --violet-edge: #5143c9;
   --cyan: #3dd6f5;
   --mint: #3ee6a8;
+  --mint-edge: #179467;
   --rose: #ff5c8a;
-  --easy: #3ee6a8;
-  --medium: #ffc857;
-  --hard: #ff5c8a;
+  --code-bg: #10121f;
+  --cube-stroke: rgba(150, 160, 230, 0.07);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -28,6 +91,7 @@
   --color-panel-2: var(--panel-2);
   --color-line: var(--line);
   --color-line-2: var(--line-2);
+  --color-edge: var(--edge);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-dim: var(--dim);
@@ -37,12 +101,9 @@
   --color-cyan: var(--cyan);
   --color-mint: var(--mint);
   --color-rose: var(--rose);
+  --color-code: var(--code-bg);
   --font-sans: var(--font-display);
   --font-mono: var(--font-code);
-}
-
-html {
-  color-scheme: dark;
 }
 
 body {
@@ -50,22 +111,65 @@ body {
   color: var(--text);
   font-family: var(--font-display), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 ::selection {
-  background: color-mix(in oklab, var(--violet) 45%, transparent);
+  background: color-mix(in oklab, var(--violet) 35%, transparent);
 }
 
-/* subtle dotted backdrop */
-.bg-grid {
-  background-image: radial-gradient(color-mix(in oklab, var(--line-2) 70%, transparent) 1px, transparent 1px);
-  background-size: 22px 22px;
+/* ---------------------------------------------------------------- voxel / clay utilities */
+
+/* clean page background with soft color glows (no repeating pattern) */
+.bg-grid,
+.bg-cubes {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 520px at 85% -10%, color-mix(in oklab, var(--orange) 10%, transparent), transparent 70%),
+    radial-gradient(800px 600px at -10% 20%, color-mix(in oklab, var(--violet) 8%, transparent), transparent 70%),
+    radial-gradient(700px 500px at 60% 110%, color-mix(in oklab, var(--cyan) 7%, transparent), transparent 70%);
+  background-attachment: fixed;
 }
+
+/* extruded clay block */
+.vx {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 5px 0 var(--edge), 0 18px 30px -18px var(--shadow);
+}
+.vx-sm {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--edge);
+}
+.vx-hover {
+  transition: transform 0.18s cubic-bezier(.3,.7,.4,1.4), box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.vx-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 0 var(--edge), 0 24px 34px -18px var(--shadow);
+  border-color: var(--line-2);
+}
+.vx-hover:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 var(--edge);
+}
+
+/* pressable voxel buttons */
+.vx-btn {
+  border-radius: 12px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s;
+  box-shadow: 0 4px 0 var(--btn-edge, var(--edge));
+}
+.vx-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 0 var(--btn-edge, var(--edge)); filter: brightness(1.05); }
+.vx-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--btn-edge, var(--edge)); }
 
 .glass {
-  background: color-mix(in oklab, var(--panel) 78%, transparent);
+  background: color-mix(in oklab, var(--panel) 82%, transparent);
   backdrop-filter: blur(14px);
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
 }
 
 .text-gradient {
@@ -76,7 +180,7 @@ body {
 }
 
 .glow-orange {
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--orange) 50%, transparent), 0 8px 40px -8px color-mix(in oklab, var(--orange) 55%, transparent);
+  box-shadow: 0 5px 0 var(--orange-edge), 0 18px 40px -12px color-mix(in oklab, var(--orange) 50%, transparent);
 }
 
 .scroll-thin {
@@ -84,16 +188,30 @@ body {
   scrollbar-color: var(--line-2) transparent;
 }
 
-/* prose for problem statements */
-.prose-oa p { margin: 0.6em 0; line-height: 1.65; color: color-mix(in oklab, var(--text) 88%, var(--muted)); }
-.prose-oa code { font-family: var(--font-code); font-size: 0.86em; background: var(--panel-2); border: 1px solid var(--line); padding: 0.08em 0.36em; border-radius: 6px; color: var(--amber); }
-.prose-oa pre { font-family: var(--font-code); font-size: 0.82rem; background: var(--bg-2); border: 1px solid var(--line); padding: 0.9rem 1rem; border-radius: 12px; overflow-x: auto; line-height: 1.55; }
+/* pixel/voxel cube icon */
+.cube {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.18), inset 2px 2px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* prose for statements / tickets */
+.prose-oa p { margin: 0.6em 0; line-height: 1.68; color: color-mix(in oklab, var(--text) 86%, var(--muted)); }
+.prose-oa code { font-family: var(--font-code); font-size: 0.85em; background: var(--panel-2); border: 1px solid var(--line); padding: 0.08em 0.36em; border-radius: 6px; color: var(--orange); }
+.prose-oa pre { font-family: var(--font-code); font-size: 0.82rem; background: var(--code-bg); border: 2px solid var(--line); box-shadow: 0 3px 0 var(--edge); padding: 0.9rem 1rem; border-radius: 12px; overflow-x: auto; line-height: 1.55; margin: 0.8em 0; }
 .prose-oa pre code { background: none; border: 0; padding: 0; color: var(--text); }
 .prose-oa ul { list-style: disc; padding-left: 1.3em; margin: 0.5em 0; }
 .prose-oa ol { list-style: decimal; padding-left: 1.3em; margin: 0.5em 0; }
 .prose-oa li { margin: 0.25em 0; line-height: 1.6; }
-.prose-oa strong { color: var(--text); font-weight: 600; }
-.prose-oa h3 { font-weight: 600; margin-top: 1.1em; font-size: 1rem; }
+.prose-oa strong { color: var(--text); font-weight: 650; }
+.prose-oa h2 { font-weight: 650; margin-top: 1.4em; font-size: 1.25rem; }
+.prose-oa h3 { font-weight: 650; margin-top: 1.1em; font-size: 1.02rem; }
+.prose-oa table { width: 100%; border-collapse: collapse; margin: 0.8em 0; font-size: 0.9em; }
+.prose-oa th, .prose-oa td { border: 1px solid var(--line); padding: 0.4em 0.6em; text-align: left; }
+.prose-oa th { background: var(--panel-2); }
+.prose-oa blockquote { border-left: 4px solid var(--orange); padding: 0.2em 0 0.2em 0.9em; margin: 0.8em 0; color: var(--muted); }
 
 @keyframes float-y {
   0%, 100% { transform: translateY(0); }

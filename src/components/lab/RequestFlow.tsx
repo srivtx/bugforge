@@ -2,9 +2,15 @@
 // Visualises each HTTP request the tests made as a chain of blocks:
 // request -> middleware -> handler -> db calls -> response
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
-import { Database, Shield, Server, AlertTriangle, ArrowRight, GitBranch } from "lucide-react";
+import { Database, Shield, Server, AlertTriangle, ArrowRight, GitBranch, Box, Rows3, RotateCcw, Maximize2, X } from "lucide-react";
+
+const Flow3D = dynamic(() => import("@/components/three/Flow3D").then((m) => m.Flow3D), {
+  ssr: false,
+  loading: () => <div className="grid h-full place-items-center text-sm text-dim">Building voxel world…</div>,
+});
 import type { LabRun, TraceStep } from "@/lib/types";
 
 const KIND = {
@@ -47,6 +53,10 @@ function Block({ step, i }: { step: TraceStep; i: number }) {
 export function RequestFlow({ run }: { run: LabRun | null }) {
   const tests = useMemo(() => Array.from(new Set((run?.traces ?? []).map((t) => t.test || "setup"))), [run]);
   const [sel, setSel] = useState<string | null>(null);
+  const [mode, setMode] = useState<"blocks" | "3d">("blocks");
+  const [reqIdx, setReqIdx] = useState(0);
+  const [playKey, setPlayKey] = useState(0);
+  const [full, setFull] = useState(false);
   if (!run || run.traces.length === 0) {
     return (
       <div className="grid h-full place-items-center p-6 text-center text-sm text-dim">
@@ -71,13 +81,89 @@ export function RequestFlow({ run }: { run: LabRun | null }) {
         {tests.map((t) => {
           const st = run.tests.find((x) => x.name === t)?.status;
           return (
-            <button key={t} onClick={() => setSel(t)} className={clsx("flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs", t === current ? "bg-panel-2 text-text" : "text-muted hover:text-text")}>
+            <button key={t} onClick={() => (setSel(t), setReqIdx(0), setPlayKey((k) => k + 1))} className={clsx("flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs", t === current ? "bg-panel-2 text-text" : "text-muted hover:text-text")}>
               <span className={clsx("h-2 w-2 shrink-0 rounded-sm", st === "pass" ? "bg-mint" : st === "fail" ? "bg-rose" : "bg-dim")} />
               <span className="truncate">{t}</span>
             </button>
           );
         })}
       </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-line/70 px-3 py-1.5">
+        <div className="flex rounded-lg border-2 border-line bg-panel p-0.5">
+          {(
+            [
+              ["blocks", "Blocks", Rows3],
+              ["3d", "3D world", Box],
+            ] as const
+          ).map(([m, l, I]) => (
+            <button key={m} onClick={() => setMode(m)} className={clsx("flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium", mode === m ? "bg-orange text-white" : "text-muted hover:text-text")}>
+              <I className="h-3 w-3" /> {l}
+            </button>
+          ))}
+        </div>
+        {mode === "3d" && traces.length > 0 && (
+          <>
+            <select value={reqIdx} onChange={(e) => (setReqIdx(Number(e.target.value)), setPlayKey((k) => k + 1))} className="max-w-[260px] rounded-lg border-2 border-line bg-panel px-2 py-1 font-mono text-[11px]">
+              {traces.map((tr, i) => (
+                <option key={tr.id} value={i}>
+                  #{i + 1} {tr.method} {tr.url} → {String(tr.status)}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => setPlayKey((k) => k + 1)} className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted hover:text-text">
+              <RotateCcw className="h-3 w-3" /> replay
+            </button>
+            <button onClick={() => (setFull(true), setPlayKey((k) => k + 1))} className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-muted hover:text-text">
+              <Maximize2 className="h-3 w-3" /> expand
+            </button>
+            <span className="ml-auto hidden text-[11px] text-dim sm:block">drag to orbit · scroll to zoom · glowing voxels = documents your query matched</span>
+          </>
+        )}
+      </div>
+      {full && traces[reqIdx] && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-bg" onClick={() => setFull(false)}>
+          <div className="flex items-center gap-3 border-b-2 border-line px-5 py-3" onClick={(e) => e.stopPropagation()}>
+            <Box className="h-4 w-4 text-orange" />
+            <span className="font-semibold">Request world</span>
+            <span className="truncate font-mono text-xs text-muted">{current}</span>
+            <select value={reqIdx} onChange={(e) => (setReqIdx(Number(e.target.value)), setPlayKey((k) => k + 1))} className="max-w-[320px] rounded-lg border-2 border-line bg-panel px-2 py-1 font-mono text-xs">
+              {traces.map((tr, i) => (
+                <option key={tr.id} value={i}>
+                  #{i + 1} {tr.method} {tr.url} → {String(tr.status)}
+                </option>
+              ))}
+            </select>
+            <button onClick={() => setPlayKey((k) => k + 1)} className="vx-btn flex items-center gap-1 border-2 border-line bg-panel px-3 py-1 text-xs">
+              <RotateCcw className="h-3 w-3" /> replay
+            </button>
+            <button onClick={() => setFull(false)} className="ml-auto rounded-lg p-1.5 text-muted hover:bg-panel-2 hover:text-text">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="relative min-h-0 flex-1" onClick={(e) => e.stopPropagation()}>
+            <Flow3D key={`full-${current}-${reqIdx}`} trace={traces[reqIdx]} playKey={playKey} />
+            <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-wrap justify-center gap-2 text-[11px]">
+              {[
+                ["request", "#ff7a1a"],
+                ["middleware", "#6c5cf5"],
+                ["handler", "#0aa6c9"],
+                ["collection (1 voxel = 1 document)", "#10a874"],
+                ["matched by the query", "#ffd23f"],
+              ].map(([l, c]) => (
+                <span key={l} className="vx-sm flex items-center gap-1.5 px-2.5 py-1">
+                  <span className="cube" style={{ background: c, width: 10, height: 10 }} /> {l}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {mode === "3d" ? (
+        <div className="relative min-h-0 flex-1">
+          {traces[reqIdx] ? <Flow3D key={`${current}-${reqIdx}`} trace={traces[reqIdx]} playKey={playKey} /> : <div className="p-4 text-sm text-dim">This test made no HTTP requests (unit test).</div>}
+        </div>
+      ) : (
       <div className="scroll-thin min-w-0 flex-1 space-y-2.5 overflow-auto p-3 [perspective:600px]" key={current}>
         {traces.map((tr, ti) => (
           <motion.div key={tr.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: ti * 0.08 }} className="rounded-xl border border-line/80 bg-bg-2/70 p-2.5">
@@ -104,6 +190,8 @@ export function RequestFlow({ run }: { run: LabRun | null }) {
           </motion.div>
         ))}
         {traces.length === 0 && <div className="p-4 text-sm text-dim">This test made no HTTP requests (unit test).</div>}
+      </div>
+      )}
       </div>
     </div>
   );

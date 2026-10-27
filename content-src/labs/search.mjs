@@ -128,18 +128,18 @@ beforeEach(async () => {
   await Product.deleteMany({});
   await Seller.deleteMany({});
   await Product.create([
-    { name: 'Echo Dot', category: 'devices', price: 49, rating: 4.1 },
-    { name: 'Echo Show', category: 'devices', price: 100, rating: 4.7 },
-    { name: 'Kindle', category: 'devices', price: 9, rating: 4.9 },
+    { name: 'Smart Speaker', category: 'devices', price: 49, rating: 4.1 },
+    { name: 'Smart Display', category: 'devices', price: 100, rating: 4.7 },
+    { name: 'E-Reader', category: 'devices', price: 9, rating: 4.9 },
     { name: 'C++ Primer', category: 'books', price: 25, rating: 4.4 },
-    { name: 'Fire TV', category: 'devices', price: 100, rating: 3.9 },
+    { name: 'Media Stick', category: 'devices', price: 100, rating: 3.9 },
   ]);
   await Seller.create({ email: 'shop@acme.com', apiKey: 'k-123' });
 });
 
 test('search is case-insensitive and sorted by rating desc', async () => {
-  const res = await request(app).get('/api/search?q=ECHO');
-  expect(res.body.map((p) => p.name)).toEqual(['Echo Show', 'Echo Dot']);
+  const res = await request(app).get('/api/search?q=SMART');
+  expect(res.body.map((p) => p.name)).toEqual(['Smart Display', 'Smart Speaker']);
 });
 
 test('special characters are matched literally', async () => {
@@ -149,7 +149,7 @@ test('special characters are matched literally', async () => {
 });
 
 test('a "." in the query is not a wildcard', async () => {
-  const res = await request(app).get('/api/search?q=e.h');
+  const res = await request(app).get('/api/search?q=e.r');
   expect(res.body).toEqual([]);
 });
 

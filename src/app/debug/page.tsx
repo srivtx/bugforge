@@ -15,7 +15,7 @@ export default function DebugPage() {
               Real codebases. Real bugs. <span className="text-gradient">Failing tests.</span>
             </>
           }
-          sub="Each lab is a small multi-file service with a bug ticket and a test suite, the same shape as the Amazon AI-assisted debugging round. Find the root causes, fix them, turn every test green. Everything runs in your browser."
+          sub="Each lab is a small multi-file service with a bug ticket and a test suite, the same shape as the repository-debugging rounds used in modern online assessments. Find the root causes, fix them, turn every test green. Everything runs in your browser."
         />
         <LabGrid labs={debugLabs.map(slim)} />
       </div>

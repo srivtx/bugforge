@@ -148,7 +148,7 @@ export function HuntArena({ labs }: { labs: Lab[] }) {
               )}
               {lv >= 3 && (
                 <div className="mt-2 space-y-1 font-mono text-[11.5px]">
-                  <div className="overflow-x-auto whitespace-pre rounded-md bg-rose/10 px-2 py-1 text-[#ffb3c7]">- {m.after.trim()}</div>
+                  <div className="overflow-x-auto whitespace-pre rounded-md bg-rose/10 px-2 py-1 text-rose">- {m.after.trim()}</div>
                   <div className="overflow-x-auto whitespace-pre rounded-md bg-mint/10 px-2 py-1 text-mint">+ {m.before.trim()}</div>
                   <p className="pt-1 font-sans text-xs leading-relaxed text-muted">{m.lesson}</p>
                 </div>

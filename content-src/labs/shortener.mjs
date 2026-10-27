@@ -94,7 +94,7 @@ beforeEach(async () => {
 const shorten = (url) => request(app).post('/api/links').send({ url });
 
 test('creates a non-empty code', async () => {
-  const res = await shorten('https://aws.amazon.com/s3/');
+  const res = await shorten('https://docs.example.com/storage/');
   expect(res.status).toBe(201);
   expect(res.body.code.length).toBeGreaterThanOrEqual(6);
 });

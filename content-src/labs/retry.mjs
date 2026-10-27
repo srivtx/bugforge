@@ -121,7 +121,7 @@ export default {
   tagline: "The retry helper gives up early, waits wrong, and swallows errors.",
   ticket: `**INFRA-58 · Outage amplified by our own retry helper**
 
-During yesterday's DynamoDB throttling event, callers using \`lib/retry.js\` saw \`undefined\` results instead of errors, retried **400 Bad Request** responses in a hot loop, and backed off linearly instead of exponentially.
+During yesterday's database throttling event, callers using \`lib/retry.js\` saw \`undefined\` results instead of errors, retried **400 Bad Request** responses in a hot loop, and backed off linearly instead of exponentially.
 
 The intended contract is in the doc comment. This is a **unit-test** lab: no HTTP involved.`,
   env: {},
