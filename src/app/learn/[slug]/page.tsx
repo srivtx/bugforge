@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Clock } from "lucide-react";
-import { lessons, getLesson } from "@/content/learn";
+import { lessons, getLesson, exercisesFor, TRACKS } from "@/content/learn";
+import { LessonExercises } from "@/components/learn/LessonExercises";
+import { MarkRead } from "@/components/learn/MarkRead";
 import { Markdown } from "@/components/Markdown";
 import { LessonWidget } from "@/components/learn/LessonWidget";
 
@@ -17,17 +19,26 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function LessonPage({ params }: { params: Promise<{ slug: string }> }) {
   const l = getLesson((await params).slug);
   if (!l) notFound();
-  const idx = lessons.indexOf(l);
-  const next = lessons[(idx + 1) % lessons.length];
+  const track = lessons.filter((x) => x.track === l.track);
+  const idx = track.indexOf(l);
+  const next = track[(idx + 1) % track.length];
+  const exercises = exercisesFor(l.slug);
+  const trackInfo = TRACKS.find((t) => t.id === l.track);
   return (
     <div className="bg-grid">
       <article className="mx-auto max-w-3xl px-4 py-10">
         <Link href="/learn" className="mb-6 inline-flex items-center gap-1 text-sm text-muted hover:text-text">
           <ArrowLeft className="h-4 w-4" /> All lessons
         </Link>
-        <div className="mb-2 flex items-center gap-2 font-mono text-xs text-dim">
-          <span className="cube" style={{ background: l.color }} />
-          <Clock className="h-3 w-3" /> {l.minutes} min read
+        <MarkRead slug={l.slug} />
+        <div className="mb-3 flex items-center gap-3 text-dim">
+          <span className="px-label" style={{ color: trackInfo?.color }}>
+            {trackInfo?.label} · {String(idx + 1).padStart(2, "0")}/{String(track.length).padStart(2, "0")}
+          </span>
+          <span className="px-label flex items-center gap-1">
+            <Clock className="h-3 w-3" /> {l.minutes} min
+          </span>
+          {exercises.length > 0 && <span className="px-label text-orange">{exercises.length} hands-on</span>}
         </div>
         <h1 className="text-3xl font-bold tracking-tight md:text-4xl">{l.title}</h1>
         <p className="mt-2 text-lg text-muted">{l.blurb}</p>
@@ -39,6 +50,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
         <div className="mt-6">
           <Markdown text={l.body} className="text-[15.5px]" />
         </div>
+        {exercises.length > 0 && <LessonExercises lesson={l.slug} exercises={exercises} />}
         {l.practice && (
           <div className="vx mt-10 p-5">
             <div className="mb-3 font-semibold">Practise it now</div>
@@ -53,7 +65,7 @@ export default async function LessonPage({ params }: { params: Promise<{ slug: s
         )}
         <Link href={`/learn/${next.slug}`} className="vx vx-hover mt-6 flex items-center justify-between p-5">
           <div>
-            <div className="text-xs text-dim">Next lesson</div>
+            <div className="px-label text-dim">Next in {trackInfo?.label}</div>
             <div className="font-semibold">{next.title}</div>
           </div>
           <ArrowRight className="h-5 w-5 text-orange" />

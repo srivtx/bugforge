@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "npx serve out",
     "lint": "eslint",
-    "content": "node scripts/build-labs.mjs && node scripts/build-problems.mjs && node scripts/build-drills.mjs",
+    "content": "node scripts/build-labs.mjs && node scripts/build-problems.mjs && node scripts/build-drills.mjs && node scripts/build-exercises.mjs",
+    "content:exercises": "node scripts/build-exercises.mjs",
     "content:labs": "node scripts/build-labs.mjs",
     "content:dsa": "node scripts/build-problems.mjs",
     "content:drills": "node scripts/build-drills.mjs"

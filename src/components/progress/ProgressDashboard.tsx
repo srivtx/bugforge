@@ -103,7 +103,7 @@ export function ProgressDashboard({ labs, problems, drills }: { labs: L[]; probl
   };
   const resetIt = () => {
     if (!confirm("Erase all progress in this browser? This can't be undone.")) return;
-    update(() => ({ labs: {}, problems: {}, drills: {}, hunts: { played: 0, solved: 0, bestStreak: 0, streak: 0, mutations: {} }, activity: {} }));
+    update(() => ({ labs: {}, problems: {}, drills: {}, hunts: { played: 0, solved: 0, bestStreak: 0, streak: 0, mutations: {} }, activity: {}, exercises: {}, lessonsRead: {} }));
   };
 
   return (

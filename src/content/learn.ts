@@ -1,7 +1,15 @@
 // Concept explainers for the Learn hub. Markdown bodies; `widget` picks an interactive block rendered above the text.
 
+import { nodeLessons } from "./learn-node";
+import { pythonLessons } from "./learn-python";
+import { dbLessons } from "./learn-db";
+import exerciseSets from "./exercises.generated.json";
+
+export type Track = "core" | "node" | "db" | "python";
+
 export interface Lesson {
   slug: string;
+  track?: Track;
   title: string;
   blurb: string;
   color: string;
@@ -11,9 +19,10 @@ export interface Lesson {
   body: string;
 }
 
-export const lessons: Lesson[] = [
+const coreLessons: Lesson[] = [
   {
     slug: "debugging-playbook",
+    track: "core",
     title: "The debugging playbook",
     blurb: "A repeatable loop for any failing codebase: reproduce, localise, explain, fix, verify.",
     color: "var(--rose)",
@@ -58,6 +67,7 @@ Repository-debugging rounds hand you an unfamiliar service, a ticket and a red t
   },
   {
     slug: "event-loop",
+    track: "node",
     title: "The event loop, visually",
     blurb: "Call stack, microtasks, macrotasks: why Promise callbacks beat setTimeout(0).",
     color: "var(--orange)",
@@ -93,6 +103,7 @@ await Promise.all(items.map((it) => it.save()));
   },
   {
     slug: "express-pipeline",
+    track: "node",
     title: "Express request pipeline",
     blurb: "Middleware order, next(), error handlers with four arguments, and 'headers already sent'.",
     color: "var(--violet)",
@@ -136,6 +147,7 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
   },
   {
     slug: "mongoose",
+    track: "db",
     title: "Mongoose & MongoDB essentials",
     blurb: "Queries, ObjectIds, CastError, {new: true}, populate, unique indexes, hooks.",
     color: "var(--mint)",
@@ -194,6 +206,7 @@ await Product.updateOne({ _id, stock: { $gte: qty } }, { $inc: { stock: -qty } }
   },
   {
     slug: "http-status",
+    track: "core",
     title: "HTTP status codes that tests check",
     blurb: "200 vs 201 vs 204, 400 vs 422, 401 vs 403, 404 vs 409: pick the right one every time.",
     color: "var(--cyan)",
@@ -214,6 +227,7 @@ Tests assert status codes precisely, so a correct body with the wrong code still
   },
   {
     slug: "async-pitfalls",
+    track: "node",
     title: "Async pitfalls catalogue",
     blurb: "Every async bug that shows up in debugging rounds, with the one-line fix.",
     color: "var(--amber)",
@@ -247,6 +261,7 @@ async function getUser(id) {
   },
   {
     slug: "js-gotchas",
+    track: "node",
     title: "JavaScript gotchas",
     blurb: "The language quirks that turn into one-line bugs.",
     color: "var(--orange)",
@@ -285,6 +300,7 @@ Methods passed as callbacks lose \`this\`: \`setTimeout(obj.method, 0)\`. Use an
   },
   {
     slug: "python-gotchas",
+    track: "python",
     title: "Python gotchas",
     blurb: "Mutable defaults, late binding, shallow copies, and friends.",
     color: "var(--cyan)",
@@ -321,6 +337,7 @@ for k in list(d):               # ✅
   },
   {
     slug: "concurrency",
+    track: "core",
     title: "Concurrency, retries & idempotency",
     blurb: "Race conditions, idempotency keys, backoff with jitter: the 'production' bugs.",
     color: "var(--violet)",
@@ -363,6 +380,7 @@ Fixed window is simple but bursty at boundaries; sliding window or token bucket 
   },
   {
     slug: "patterns",
+    track: "core",
     title: "DSA pattern cheat sheet",
     blurb: "Signals in the problem statement → the pattern to reach for, with complexity.",
     color: "var(--mint)",
@@ -401,6 +419,7 @@ Fixed window is simple but bursty at boundaries; sliding window or token bucket 
   },
   {
     slug: "build-playbook",
+    track: "core",
     title: "Building from a spec",
     blurb: "How to approach implementation labs: interfaces first, edge cases early, tests as the contract.",
     color: "var(--cyan)",
@@ -419,6 +438,30 @@ Build labs are the opposite of debugging: the tests describe a component that do
 > Treat the test file as the API doc. If a test expects \`201\` and \`{ id }\`, that's the spec, even if you'd design it differently.
 `,
   },
+];
+
+export const lessons: Lesson[] = [...coreLessons, ...nodeLessons, ...dbLessons, ...pythonLessons];
+
+export interface Exercise {
+  id: string;
+  title: string;
+  goal: string;
+  lang: "js" | "py";
+  file: string;
+  starter: string;
+  solution: string;
+  support?: Record<string, string>;
+  tests: Record<string, string>;
+  hints: string[];
+}
+
+export const exercisesFor = (slug: string): Exercise[] => ((exerciseSets as unknown as Record<string, Exercise[]>)[slug] ?? []);
+
+export const TRACKS: { id: Track; label: string; blurb: string; color: string }[] = [
+  { id: "core", label: "Core", blurb: "How to debug, build and talk through problems", color: "var(--orange)" },
+  { id: "node", label: "Node.js", blurb: "Express, async, auth, testing and the runtime", color: "var(--amber)" },
+  { id: "db", label: "Databases", blurb: "Mongoose from zero, with runnable exercises", color: "var(--mint)" },
+  { id: "python", label: "Python", blurb: "The language rules behind Python bugs", color: "var(--cyan)" },
 ];
 
 export const getLesson = (slug: string) => lessons.find((l) => l.slug === slug);

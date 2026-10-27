@@ -1135,8 +1135,77 @@ function createMongoose() {
       });
     Model.updateOne = upd(false);
     Model.updateMany = upd(true);
-    Model.aggregate = () => {
-      throw new Error("aggregate() is not supported in this sandbox");
+    // A small aggregation pipeline: $match, $group, $sort, $skip, $limit, $project, $unwind, $count.
+    Model.aggregate = (pipeline = []) => {
+      const val = (doc, e) => {
+        if (typeof e === "string" && e.startsWith("$")) {
+          const r = getPath(doc, e.slice(1));
+          return r.found ? r.value : undefined;
+        }
+        if (e && typeof e === "object" && !Array.isArray(e) && !(e instanceof Date) && !(e instanceof ObjectId)) return Object.fromEntries(Object.entries(e).map(([k, v]) => [k, val(doc, v)]));
+        return e;
+      };
+      const key = (v) => JSON.stringify(v instanceof ObjectId ? String(v) : v);
+      const cmp = (a, b) => {
+        const x = a instanceof Date ? a.getTime() : idStr(a);
+        const y = b instanceof Date ? b.getTime() : idStr(b);
+        return x < y ? -1 : x > y ? 1 : 0;
+      };
+      const run = async () => {
+        let rows = store().map((r) => clonePersist(r));
+        for (const stage of pipeline) {
+          const [op, arg] = Object.entries(stage)[0] || [];
+          if (op === "$match") rows = rows.filter((r) => matches(r, castFilter(arg)));
+          else if (op === "$sort") rows.sort((a, b) => { for (const [k, d] of Object.entries(arg)) { const c = cmp(getPath(a, k).value, getPath(b, k).value); if (c) return c * d; } return 0; });
+          else if (op === "$skip") rows = rows.slice(arg);
+          else if (op === "$limit") rows = rows.slice(0, arg);
+          else if (op === "$count") rows = [{ [arg]: rows.length }];
+          else if (op === "$unwind") {
+            const path = (typeof arg === "string" ? arg : arg.path).slice(1);
+            rows = rows.flatMap((r) => { const a = getPath(r, path).value; return Array.isArray(a) ? a.map((x) => ({ ...r, [path]: x })) : []; });
+          } else if (op === "$project") {
+            rows = rows.map((r) => {
+              const out = "_id" in arg && !arg._id ? {} : { _id: r._id };
+              const excl = Object.values(arg).every((v) => v === 0 || v === false);
+              if (excl) { const o = { ...r }; for (const k of Object.keys(arg)) delete o[k]; return o; }
+              for (const [k, v] of Object.entries(arg)) if (k !== "_id" || v) out[k] = v === 1 || v === true ? getPath(r, k).value : val(r, v);
+              return out;
+            });
+          } else if (op === "$group") {
+            const groups = new Map();
+            for (const r of rows) {
+              const id = val(r, arg._id ?? null);
+              const k = key(id);
+              if (!groups.has(k)) groups.set(k, { id, rows: [] });
+              groups.get(k).rows.push(r);
+            }
+            rows = [...groups.values()].map(({ id, rows: g }) => {
+              const out = { _id: id };
+              for (const [field, acc] of Object.entries(arg)) {
+                if (field === "_id") continue;
+                const [fn, e] = Object.entries(acc)[0];
+                const vals = g.map((r) => val(r, e));
+                const nums = vals.filter((v) => typeof v === "number");
+                if (fn === "$sum") out[field] = nums.reduce((a, b) => a + b, 0);
+                else if (fn === "$avg") out[field] = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+                else if (fn === "$min") out[field] = vals.reduce((a, b) => (a === undefined || cmp(b, a) < 0 ? b : a), undefined);
+                else if (fn === "$max") out[field] = vals.reduce((a, b) => (a === undefined || cmp(b, a) > 0 ? b : a), undefined);
+                else if (fn === "$push") out[field] = vals;
+                else if (fn === "$addToSet") out[field] = [...new Map(vals.map((v) => [key(v), v])).values()];
+                else if (fn === "$first") out[field] = vals[0];
+                else if (fn === "$last") out[field] = vals[vals.length - 1];
+                else if (fn === "$count") out[field] = g.length;
+                else throw new Error(`aggregate: ${fn} is not supported in this sandbox`);
+              }
+              return out;
+            });
+          } else throw new Error(`aggregate: stage ${op} is not supported in this sandbox`);
+        }
+        traceStep("db", `${name}.aggregate(${pipeline.map((st) => Object.keys(st)[0]).join(" → ")})`, `→ ${rows.length} row${rows.length === 1 ? "" : "s"}`, { coll: name, size: store().length, matched: rows.length, op: "aggregate" });
+        return rows;
+      };
+      const p = { exec: run, then: (a, b) => run().then(a, b), catch: (b) => run().catch(b) };
+      return p;
     };
 
     models[name] = Model;

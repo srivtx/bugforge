@@ -10,10 +10,12 @@ export interface Progress {
   drills: Record<string, { correct: boolean; at: number }>;
   hunts: { played: number; solved: number; bestStreak: number; streak: number; fastestMs?: number; mutations: Record<string, number> };
   activity: Record<string, number>; // yyyy-mm-dd -> count
+  exercises: Record<string, { status: ItemStatus; hints: number; runs: number; xp: number; at: number }>; // "lesson/id"
+  lessonsRead: Record<string, number>; // slug -> first read time
 }
 
 const KEY = "bugforge.progress.v1";
-const empty: Progress = { labs: {}, problems: {}, drills: {}, hunts: { played: 0, solved: 0, bestStreak: 0, streak: 0, mutations: {} }, activity: {} };
+const empty: Progress = { labs: {}, problems: {}, drills: {}, hunts: { played: 0, solved: 0, bestStreak: 0, streak: 0, mutations: {} }, activity: {}, exercises: {}, lessonsRead: {} };
 
 let state: Progress = empty;
 let loaded = false;

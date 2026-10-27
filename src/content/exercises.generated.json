@@ -1,0 +1,218 @@
+{
+ "db-first-steps": [
+  {
+   "lang": "js",
+   "id": "book-model",
+   "title": "Define your first model",
+   "goal": "Describe a **Book** to the database: a required `title`, an `author` that defaults to `'Unknown'`, and a numeric `year`.",
+   "file": "models/Book.js",
+   "starter": "import mongoose from 'mongoose';\n\n// A book has:\n//   title  - text, required\n//   author - text, defaults to 'Unknown'\n//   year   - a number\nconst bookSchema = new mongoose.Schema({\n  // TODO: add the three fields here\n});\n\nexport default mongoose.model('Book', bookSchema);\n",
+   "solution": "import mongoose from 'mongoose';\n\nconst bookSchema = new mongoose.Schema({\n  title: { type: String, required: true },\n  author: { type: String, default: 'Unknown' },\n  year: Number,\n});\n\nexport default mongoose.model('Book', bookSchema);\n",
+   "tests": {
+    "book.test.js": "import Book from './models/Book.js';\n\nbeforeEach(async () => {\n  await Book.deleteMany({});\n});\n\ntest('saves a book with all three fields', async () => {\n  const b = await Book.create({ title: 'Dune', author: 'Frank Herbert', year: 1965 });\n  expect(b.title).toBe('Dune');\n  expect(b.author).toBe('Frank Herbert');\n  expect(b.year).toBe(1965);\n});\n\ntest('title is required', async () => {\n  await expect(Book.create({ author: 'Nobody' })).rejects.toThrow();\n});\n\ntest(\"author defaults to 'Unknown'\", async () => {\n  const b = await Book.create({ title: 'Anonymous poems' });\n  expect(b.author).toBe('Unknown');\n});\n\ntest('year is stored as a number', async () => {\n  const b = await Book.create({ title: 'Space Odyssey', year: '2001' });\n  expect(b.year).toBe(2001);\n});\n"
+   },
+   "hints": [
+    "Each field is a key inside the object you pass to `new mongoose.Schema({ ... })`.",
+    "A field can be just a type (`year: Number`) or an options object: `{ type: String, required: true }`.",
+    "Defaults go in the options object too: `author: { type: String, default: 'Unknown' }`."
+   ]
+  },
+  {
+   "lang": "js",
+   "id": "book-crud",
+   "title": "Save and read books",
+   "goal": "Write `addBook`, `listBooks` (oldest first) and `findByAuthor`. The model is ready in `models/Book.js`.",
+   "file": "books.js",
+   "support": {
+    "models/Book.js": "import mongoose from 'mongoose';\n\nconst bookSchema = new mongoose.Schema({\n  title: { type: String, required: true },\n  author: { type: String, default: 'Unknown' },\n  year: Number,\n});\n\nexport default mongoose.model('Book', bookSchema);\n"
+   },
+   "starter": "import Book from './models/Book.js';\n\n// Save a new book and return it.\nexport async function addBook(data) {\n  // TODO\n}\n\n// Every book, oldest first (sorted by year, ascending).\nexport async function listBooks() {\n  // TODO\n}\n\n// Books whose author is exactly 'name'.\nexport async function findByAuthor(name) {\n  // TODO\n}\n",
+   "solution": "import Book from './models/Book.js';\n\nexport async function addBook(data) {\n  return Book.create(data);\n}\n\nexport async function listBooks() {\n  return Book.find().sort({ year: 1 });\n}\n\nexport async function findByAuthor(name) {\n  return Book.find({ author: name });\n}\n",
+   "tests": {
+    "books.test.js": "import Book from './models/Book.js';\nimport { addBook, listBooks, findByAuthor } from './books.js';\n\nbeforeEach(async () => {\n  await Book.deleteMany({});\n});\n\ntest('addBook saves and returns the book', async () => {\n  const b = await addBook({ title: 'Neuromancer', author: 'William Gibson', year: 1984 });\n  expect(b.title).toBe('Neuromancer');\n  expect(await Book.countDocuments()).toBe(1);\n});\n\ntest('listBooks returns books oldest first', async () => {\n  await addBook({ title: 'B', year: 2000 });\n  await addBook({ title: 'A', year: 1950 });\n  await addBook({ title: 'C', year: 2020 });\n  const list = await listBooks();\n  expect(list.map((b) => b.title)).toEqual(['A', 'B', 'C']);\n});\n\ntest('findByAuthor only returns that author', async () => {\n  await addBook({ title: 'Foundation', author: 'Asimov', year: 1951 });\n  await addBook({ title: 'I, Robot', author: 'Asimov', year: 1950 });\n  await addBook({ title: 'Dune', author: 'Herbert', year: 1965 });\n  const list = await findByAuthor('Asimov');\n  expect(list).toHaveLength(2);\n});\n"
+   },
+   "hints": [
+    "`Model.create(data)` saves a document and resolves to it. Return it.",
+    "`Model.find()` with no filter returns everything. Chain `.sort({ year: 1 })` for ascending.",
+    "A filter is a plain object: `Book.find({ author: name })`."
+   ]
+  }
+ ],
+ "db-queries": [
+  {
+   "lang": "js",
+   "id": "price-filters",
+   "title": "Filter by price",
+   "goal": "Use comparison operators: `cheaperThan(max)` (strictly below, cheapest first) and `inPriceRange(min, max)` (both ends included).",
+   "file": "shop.js",
+   "support": {
+    "models/Product.js": "import mongoose from 'mongoose';\n\nconst productSchema = new mongoose.Schema({\n  name: { type: String, required: true },\n  price: { type: Number, required: true },\n  tags: { type: [String], default: [] },\n  stock: { type: Number, default: 0 },\n});\n\nexport default mongoose.model('Product', productSchema);\n"
+   },
+   "starter": "import Product from './models/Product.js';\n\n// Products with price strictly below max, cheapest first.\nexport async function cheaperThan(max) {\n  // TODO\n}\n\n// Products with min <= price <= max.\nexport async function inPriceRange(min, max) {\n  // TODO\n}\n",
+   "solution": "import Product from './models/Product.js';\n\nexport async function cheaperThan(max) {\n  return Product.find({ price: { $lt: max } }).sort({ price: 1 });\n}\n\nexport async function inPriceRange(min, max) {\n  return Product.find({ price: { $gte: min, $lte: max } });\n}\n",
+   "tests": {
+    "shop.test.js": "import Product from './models/Product.js';\nimport { cheaperThan, inPriceRange } from './shop.js';\n\nconst seed = () => Product.create([\n  { name: 'iPhone', price: 999, tags: ['phone', 'apple'], stock: 3 },\n  { name: 'Phone case', price: 19, tags: ['phone', 'accessory'], stock: 40 },\n  { name: 'USB cable', price: 9, tags: ['accessory'], stock: 100 },\n  { name: 'Laptop', price: 1499, tags: ['computer'], stock: 2 },\n  { name: 'Mouse', price: 25, tags: ['computer', 'accessory'], stock: 0 },\n]);\n\nbeforeEach(async () => {\n  await Product.deleteMany({});\n  await seed();\n});\n\ntest('cheaperThan(25) excludes the 25 mouse and sorts cheapest first', async () => {\n  const list = await cheaperThan(25);\n  expect(list.map((p) => p.name)).toEqual(['USB cable', 'Phone case']);\n});\n\ntest('inPriceRange includes both ends', async () => {\n  const list = await inPriceRange(19, 999);\n  expect(list.map((p) => p.name).sort()).toEqual(['Mouse', 'Phone case', 'iPhone']);\n});\n"
+   },
+   "hints": [
+    "Operators go inside the field's value: `{ price: { $lt: 10 } }`.",
+    "`$lt` is strictly less than; `$lte`, `$gte` include the boundary.",
+    "Combine two operators on one field: `{ price: { $gte: min, $lte: max } }`."
+   ]
+  },
+  {
+   "lang": "js",
+   "id": "tags-search",
+   "title": "Tags and search",
+   "goal": "`withAnyTag(tags)` returns products having at least one of the tags. `searchByName(q)` matches names containing `q`, ignoring case.",
+   "file": "search.js",
+   "support": {
+    "models/Product.js": "import mongoose from 'mongoose';\n\nconst productSchema = new mongoose.Schema({\n  name: { type: String, required: true },\n  price: { type: Number, required: true },\n  tags: { type: [String], default: [] },\n  stock: { type: Number, default: 0 },\n});\n\nexport default mongoose.model('Product', productSchema);\n"
+   },
+   "starter": "import Product from './models/Product.js';\n\n// Products that have at least one of the given tags.\nexport async function withAnyTag(tags) {\n  // TODO\n}\n\n// Products whose name contains q, case-insensitive. 'phone' matches 'iPhone' and 'Phone case'.\nexport async function searchByName(q) {\n  // TODO\n}\n",
+   "solution": "import Product from './models/Product.js';\n\nconst escape = (s) => s.replace(/[.*+?^$()|[\\]\\\\{}]/g, '\\\\$&');\n\nexport async function withAnyTag(tags) {\n  return Product.find({ tags: { $in: tags } });\n}\n\nexport async function searchByName(q) {\n  return Product.find({ name: { $regex: escape(q), $options: 'i' } });\n}\n",
+   "tests": {
+    "search.test.js": "import Product from './models/Product.js';\nimport { withAnyTag, searchByName } from './search.js';\n\nconst seed = () => Product.create([\n  { name: 'iPhone', price: 999, tags: ['phone', 'apple'], stock: 3 },\n  { name: 'Phone case', price: 19, tags: ['phone', 'accessory'], stock: 40 },\n  { name: 'USB cable', price: 9, tags: ['accessory'], stock: 100 },\n  { name: 'Laptop', price: 1499, tags: ['computer'], stock: 2 },\n  { name: 'Mouse', price: 25, tags: ['computer', 'accessory'], stock: 0 },\n]);\n\nbeforeEach(async () => {\n  await Product.deleteMany({});\n  await seed();\n});\n\ntest('withAnyTag matches any of the tags', async () => {\n  const list = await withAnyTag(['apple', 'computer']);\n  expect(list.map((p) => p.name).sort()).toEqual(['Laptop', 'Mouse', 'iPhone']);\n});\n\ntest('searchByName ignores case', async () => {\n  const list = await searchByName('phone');\n  expect(list.map((p) => p.name).sort()).toEqual(['Phone case', 'iPhone']);\n});\n\ntest('searchByName treats symbols literally', async () => {\n  const list = await searchByName('.');\n  expect(list).toHaveLength(0);\n});\n"
+   },
+   "hints": [
+    "When a field holds an array, `{ tags: 'x' }` already means \"contains x\". For several options use `$in`.",
+    "Case-insensitive contains: `{ name: { $regex: q, $options: 'i' } }`.",
+    "User text inside a regex must be escaped, or `.` matches everything: `q.replace(/[.*+?^$()|[\\]\\\\{}]/g, '\\\\$&')`."
+   ]
+  }
+ ],
+ "db-express-api": [
+  {
+   "lang": "js",
+   "id": "todo-api",
+   "title": "Your first database-backed API",
+   "goal": "Finish the controller: `POST /todos` saves a todo (201, or 400 when `title` is missing), `GET /todos/:id` returns it (404 if missing, 400 for a malformed id).",
+   "file": "todos.controller.js",
+   "support": {
+    "models/Todo.js": "import mongoose from 'mongoose';\n\nconst todoSchema = new mongoose.Schema({\n  title: { type: String, required: true },\n  done: { type: Boolean, default: false },\n});\n\nexport default mongoose.model('Todo', todoSchema);\n",
+    "app.js": "import express from 'express';\nimport { listTodos, createTodo, getTodo } from './todos.controller.js';\n\nconst app = express();\napp.use(express.json());\napp.get('/todos', listTodos);\napp.post('/todos', createTodo);\napp.get('/todos/:id', getTodo);\n\nexport default app;\n"
+   },
+   "starter": "import mongoose from 'mongoose';\nimport Todo from './models/Todo.js';\n\nexport async function listTodos(req, res) {\n  const todos = await Todo.find();\n  res.json(todos);\n}\n\n// POST /todos  { title }  ->  201 + the saved todo,  400 { error } if title is missing\nexport async function createTodo(req, res) {\n  // TODO\n  res.status(501).json({ error: 'not implemented' });\n}\n\n// GET /todos/:id  ->  200 todo,  404 { error } if not found,  400 { error } if the id is malformed\nexport async function getTodo(req, res) {\n  // TODO\n  res.status(501).json({ error: 'not implemented' });\n}\n",
+   "solution": "import mongoose from 'mongoose';\nimport Todo from './models/Todo.js';\n\nexport async function listTodos(req, res) {\n  const todos = await Todo.find();\n  res.json(todos);\n}\n\nexport async function createTodo(req, res) {\n  if (!req.body.title) return res.status(400).json({ error: 'title is required' });\n  const todo = await Todo.create({ title: req.body.title });\n  res.status(201).json(todo);\n}\n\nexport async function getTodo(req, res) {\n  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ error: 'bad id' });\n  const todo = await Todo.findById(req.params.id);\n  if (!todo) return res.status(404).json({ error: 'Todo not found' });\n  res.json(todo);\n}\n",
+   "tests": {
+    "todos.test.js": "import request from 'supertest';\nimport mongoose from 'mongoose';\nimport app from './app.js';\nimport Todo from './models/Todo.js';\n\nbeforeEach(async () => {\n  await Todo.deleteMany({});\n});\n\ntest('POST /todos creates a todo with 201', async () => {\n  const res = await request(app).post('/todos').send({ title: 'Learn Mongoose' });\n  expect(res.status).toBe(201);\n  expect(res.body.title).toBe('Learn Mongoose');\n  expect(res.body.done).toBe(false);\n  expect(await Todo.countDocuments()).toBe(1);\n});\n\ntest('POST /todos without a title is a 400', async () => {\n  const res = await request(app).post('/todos').send({});\n  expect(res.status).toBe(400);\n  expect(res.body.error).toBeDefined();\n});\n\ntest('GET /todos/:id returns the todo', async () => {\n  const t = await Todo.create({ title: 'Read docs' });\n  const res = await request(app).get('/todos/' + t._id);\n  expect(res.status).toBe(200);\n  expect(res.body.title).toBe('Read docs');\n});\n\ntest('GET /todos/:id for a missing id is a 404', async () => {\n  const res = await request(app).get('/todos/' + new mongoose.Types.ObjectId());\n  expect(res.status).toBe(404);\n});\n\ntest('GET /todos/:id for a malformed id is a 400', async () => {\n  const res = await request(app).get('/todos/not-an-id');\n  expect(res.status).toBe(400);\n});\n"
+   },
+   "hints": [
+    "Read the body from `req.body.title`. If it's missing, `return res.status(400).json({ error: '...' })`. The `return` stops the handler.",
+    "`Todo.create(...)` saves; reply with `res.status(201).json(todo)`.",
+    "Check the id first with `mongoose.isValidObjectId(id)` (400), then `findById` returns `null` when nothing matches (404)."
+   ]
+  }
+ ],
+ "db-updates": [
+  {
+   "lang": "js",
+   "id": "stock-updates",
+   "title": "Update without losing stock",
+   "goal": "`restock` should return the **updated** product. `buy` must never sell more than is in stock, even when two orders arrive at once.",
+   "file": "inventory.js",
+   "support": {
+    "models/Product.js": "import mongoose from 'mongoose';\n\nconst productSchema = new mongoose.Schema({\n  name: { type: String, required: true },\n  price: { type: Number, required: true },\n  tags: { type: [String], default: [] },\n  stock: { type: Number, default: 0 },\n});\n\nexport default mongoose.model('Product', productSchema);\n"
+   },
+   "starter": "import Product from './models/Product.js';\n\n// Add n units and return the product AFTER the update.\nexport async function restock(id, n) {\n  return Product.findByIdAndUpdate(id, { $inc: { stock: n } });\n}\n\n// Take qty units if there are enough. Returns true if the purchase went through.\nexport async function buy(id, qty) {\n  const p = await Product.findById(id);\n  if (p.stock < qty) return false;\n  p.stock -= qty;\n  await p.save();\n  return true;\n}\n",
+   "solution": "import Product from './models/Product.js';\n\nexport async function restock(id, n) {\n  return Product.findByIdAndUpdate(id, { $inc: { stock: n } }, { new: true });\n}\n\nexport async function buy(id, qty) {\n  const r = await Product.updateOne({ _id: id, stock: { $gte: qty } }, { $inc: { stock: -qty } });\n  return r.modifiedCount === 1;\n}\n",
+   "tests": {
+    "inventory.test.js": "import Product from './models/Product.js';\nimport { restock, buy } from './inventory.js';\n\nlet lamp;\nbeforeEach(async () => {\n  await Product.deleteMany({});\n  lamp = await Product.create({ name: 'Lamp', price: 30, stock: 1 });\n});\n\ntest('restock returns the updated stock', async () => {\n  const p = await restock(lamp._id, 4);\n  expect(p.stock).toBe(5);\n});\n\ntest('buy refuses when there is not enough stock', async () => {\n  expect(await buy(lamp._id, 2)).toBe(false);\n  expect((await Product.findById(lamp._id)).stock).toBe(1);\n});\n\ntest('two buyers racing for the last lamp: only one wins', async () => {\n  const results = await Promise.all([buy(lamp._id, 1), buy(lamp._id, 1)]);\n  expect(results.filter(Boolean)).toHaveLength(1);\n  expect((await Product.findById(lamp._id)).stock).toBe(0);\n});\n"
+   },
+   "hints": [
+    "`findByIdAndUpdate` returns the document as it was **before** the update unless you pass `{ new: true }`.",
+    "In `buy`, the read and the write are separate steps. Two requests can both read `stock: 1` before either saves.",
+    "Make it one atomic step: `Product.updateOne({ _id: id, stock: { $gte: qty } }, { $inc: { stock: -qty } })`, then check `modifiedCount === 1`."
+   ]
+  }
+ ],
+ "db-relations": [
+  {
+   "lang": "js",
+   "id": "posts-authors",
+   "title": "Posts and their authors",
+   "goal": "Posts reference users. `postsWithAuthors()` returns every post with its `author` filled in (sorted by title), and `postsBy(userId)` returns one user's posts.",
+   "file": "posts.js",
+   "support": {
+    "models/User.js": "import mongoose from 'mongoose';\n\nexport default mongoose.model('User', new mongoose.Schema({ name: { type: String, required: true } }));\n",
+    "models/Post.js": "import mongoose from 'mongoose';\n\nconst postSchema = new mongoose.Schema({\n  title: { type: String, required: true },\n  author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },\n});\n\nexport default mongoose.model('Post', postSchema);\n"
+   },
+   "starter": "import Post from './models/Post.js';\n\n// Every post, sorted by title, with post.author replaced by the full user document.\nexport async function postsWithAuthors() {\n  return Post.find().sort({ title: 1 });\n}\n\n// Posts written by the user with this id.\nexport async function postsBy(userId) {\n  // TODO\n}\n",
+   "solution": "import Post from './models/Post.js';\n\nexport async function postsWithAuthors() {\n  return Post.find().sort({ title: 1 }).populate('author');\n}\n\nexport async function postsBy(userId) {\n  return Post.find({ author: userId });\n}\n",
+   "tests": {
+    "posts.test.js": "import User from './models/User.js';\nimport Post from './models/Post.js';\nimport { postsWithAuthors, postsBy } from './posts.js';\n\nlet ada, linus;\nbeforeEach(async () => {\n  await Post.deleteMany({});\n  await User.deleteMany({});\n  ada = await User.create({ name: 'Ada' });\n  linus = await User.create({ name: 'Linus' });\n  await Post.create({ title: 'Engines', author: ada._id });\n  await Post.create({ title: 'Kernels', author: linus._id });\n  await Post.create({ title: 'Analytics', author: ada._id });\n});\n\ntest('postsWithAuthors fills in author names', async () => {\n  const posts = await postsWithAuthors();\n  expect(posts.map((p) => p.title)).toEqual(['Analytics', 'Engines', 'Kernels']);\n  expect(posts.map((p) => p.author.name)).toEqual(['Ada', 'Ada', 'Linus']);\n});\n\ntest('postsBy returns only that author\\'s posts', async () => {\n  const posts = await postsBy(ada._id);\n  expect(posts.map((p) => p.title).sort()).toEqual(['Analytics', 'Engines']);\n});\n"
+   },
+   "hints": [
+    "The post only stores the author's `_id`. `.populate('author')` swaps it for the user document.",
+    "`populate` chains like `sort`: `Post.find().sort(...).populate('author')`.",
+    "To filter by a reference, compare the id field: `Post.find({ author: userId })`."
+   ]
+  }
+ ],
+ "db-pagination": [
+  {
+   "lang": "js",
+   "id": "paged-list",
+   "title": "Pages that add up",
+   "goal": "`listPage(page, limit)` returns `{ items, page, total, totalPages }`. Pages start at 1, items are sorted by `n`, and `limit` is capped at 50.",
+   "file": "pages.js",
+   "support": {
+    "models/Item.js": "import mongoose from 'mongoose';\n\nexport default mongoose.model('Item', new mongoose.Schema({ n: Number }));\n"
+   },
+   "starter": "import Item from './models/Item.js';\n\nexport async function listPage(page = 1, limit = 10) {\n  const items = await Item.find().skip(page * limit).limit(limit);\n  return { items, page, total: items.length, totalPages: 1 };\n}\n",
+   "solution": "import Item from './models/Item.js';\n\nexport async function listPage(page = 1, limit = 10) {\n  const size = Math.min(Math.max(limit, 1), 50);\n  const p = Math.max(page, 1);\n  const [items, total] = await Promise.all([\n    Item.find().sort({ n: 1 }).skip((p - 1) * size).limit(size),\n    Item.countDocuments(),\n  ]);\n  return { items, page: p, total, totalPages: Math.ceil(total / size) };\n}\n",
+   "tests": {
+    "pages.test.js": "import Item from './models/Item.js';\nimport { listPage } from './pages.js';\n\nbeforeEach(async () => {\n  await Item.deleteMany({});\n  const docs = [];\n  for (let n = 25; n >= 1; n--) docs.push({ n });\n  await Item.create(docs);\n});\n\ntest('page 1 starts at the first item', async () => {\n  const r = await listPage(1, 10);\n  expect(r.items.map((i) => i.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);\n});\n\ntest('total and totalPages describe the whole collection', async () => {\n  const r = await listPage(1, 10);\n  expect(r.total).toBe(25);\n  expect(r.totalPages).toBe(3);\n});\n\ntest('the last page is partial', async () => {\n  const r = await listPage(3, 10);\n  expect(r.items.map((i) => i.n)).toEqual([21, 22, 23, 24, 25]);\n});\n\ntest('limit is capped at 50', async () => {\n  const r = await listPage(1, 1000);\n  expect(r.totalPages).toBe(1);\n  expect(r.items).toHaveLength(25);\n});\n"
+   },
+   "hints": [
+    "Page 1 should skip nothing: `skip((page - 1) * limit)`.",
+    "Without `.sort({ n: 1 })` the order is whatever the database feels like, so pages can repeat or skip items.",
+    "`total` is the size of the whole collection: `Item.countDocuments()`, not `items.length`. Then `totalPages = Math.ceil(total / limit)`."
+   ]
+  }
+ ],
+ "db-aggregate": [
+  {
+   "lang": "js",
+   "id": "sales-report",
+   "title": "Your first report",
+   "goal": "Group orders: `totalsByCategory()` returns `{ _id: category, total, count }` sorted by total, highest first. `topCustomers(n)` returns the n biggest spenders as `{ _id: customer, spent }`.",
+   "file": "report.js",
+   "support": {
+    "models/Order.js": "import mongoose from 'mongoose';\n\nexport default mongoose.model('Order', new mongoose.Schema({\n  customer: String,\n  category: String,\n  amount: Number,\n}));\n"
+   },
+   "starter": "import Order from './models/Order.js';\n\n// [{ _id: 'books', total: 55, count: 2 }, ...] sorted by total, highest first.\nexport async function totalsByCategory() {\n  // TODO: Order.aggregate([...])\n}\n\n// The n customers who spent the most: [{ _id: 'ana', spent: 120 }, ...]\nexport async function topCustomers(n) {\n  // TODO\n}\n",
+   "solution": "import Order from './models/Order.js';\n\nexport async function totalsByCategory() {\n  return Order.aggregate([\n    { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },\n    { $sort: { total: -1 } },\n  ]);\n}\n\nexport async function topCustomers(n) {\n  return Order.aggregate([\n    { $group: { _id: '$customer', spent: { $sum: '$amount' } } },\n    { $sort: { spent: -1 } },\n    { $limit: n },\n  ]);\n}\n",
+   "tests": {
+    "report.test.js": "import Order from './models/Order.js';\nimport { totalsByCategory, topCustomers } from './report.js';\n\nbeforeEach(async () => {\n  await Order.deleteMany({});\n  await Order.create([\n    { customer: 'ana', category: 'books', amount: 20 },\n    { customer: 'ben', category: 'games', amount: 60 },\n    { customer: 'ana', category: 'games', amount: 100 },\n    { customer: 'cy', category: 'books', amount: 35 },\n    { customer: 'ben', category: 'music', amount: 10 },\n  ]);\n});\n\ntest('totalsByCategory sums and counts per category', async () => {\n  const rows = await totalsByCategory();\n  expect(rows).toEqual([\n    { _id: 'games', total: 160, count: 2 },\n    { _id: 'books', total: 55, count: 2 },\n    { _id: 'music', total: 10, count: 1 },\n  ]);\n});\n\ntest('topCustomers returns the biggest spenders', async () => {\n  const rows = await topCustomers(2);\n  expect(rows).toEqual([\n    { _id: 'ana', spent: 120 },\n    { _id: 'ben', spent: 70 },\n  ]);\n});\n"
+   },
+   "hints": [
+    "`aggregate` takes an array of stages. Each document flows through them in order.",
+    "`{ $group: { _id: '$category', total: { $sum: '$amount' } } }`: the `$` in `'$amount'` means \"the value of this field\". `{ $sum: 1 }` counts.",
+    "Add `{ $sort: { total: -1 } }` after the group, and `{ $limit: n }` for the top-n."
+   ]
+  }
+ ],
+ "db-errors": [
+  {
+   "lang": "js",
+   "id": "signup-errors",
+   "title": "Turn database errors into status codes",
+   "goal": "`POST /users` creates a user (201). A validation failure is **400**, a duplicate email is **409**, and the password never comes back in the response.",
+   "file": "users.controller.js",
+   "support": {
+    "models/User.js": "import mongoose from 'mongoose';\n\nconst userSchema = new mongoose.Schema({\n  email: { type: String, required: true, unique: true, lowercase: true, trim: true },\n  password: { type: String, required: true, minlength: 8 },\n});\n\nexport default mongoose.model('User', userSchema);\n",
+    "app.js": "import express from 'express';\nimport { createUser } from './users.controller.js';\n\nconst app = express();\napp.use(express.json());\napp.post('/users', createUser);\n\nexport default app;\n"
+   },
+   "starter": "import User from './models/User.js';\n\nexport async function createUser(req, res) {\n  try {\n    const user = await User.create(req.body);\n    res.status(201).json(user);\n  } catch (err) {\n    res.status(500).json({ error: 'Something went wrong' });\n  }\n}\n",
+   "solution": "import User from './models/User.js';\n\nexport async function createUser(req, res) {\n  try {\n    const { email, password } = req.body;\n    const user = await User.create({ email, password });\n    res.status(201).json({ id: user._id, email: user.email });\n  } catch (err) {\n    if (err.name === 'ValidationError') return res.status(400).json({ error: err.message });\n    if (err.code === 11000) return res.status(409).json({ error: 'Email already registered' });\n    res.status(500).json({ error: 'Something went wrong' });\n  }\n}\n",
+   "tests": {
+    "users.test.js": "import request from 'supertest';\nimport app from './app.js';\nimport User from './models/User.js';\n\nbeforeEach(async () => {\n  await User.deleteMany({});\n});\n\ntest('creates a user with 201', async () => {\n  const res = await request(app).post('/users').send({ email: 'Ada@Example.com', password: 'correct-horse' });\n  expect(res.status).toBe(201);\n  expect(res.body.email).toBe('ada@example.com');\n});\n\ntest('never returns the password', async () => {\n  const res = await request(app).post('/users').send({ email: 'a@b.co', password: 'correct-horse' });\n  expect(res.body).not.toHaveProperty('password');\n});\n\ntest('a short password is a 400', async () => {\n  const res = await request(app).post('/users').send({ email: 'a@b.co', password: 'short' });\n  expect(res.status).toBe(400);\n});\n\ntest('a duplicate email is a 409', async () => {\n  await request(app).post('/users').send({ email: 'a@b.co', password: 'correct-horse' });\n  const res = await request(app).post('/users').send({ email: 'A@B.co', password: 'another-one' });\n  expect(res.status).toBe(409);\n});\n"
+   },
+   "hints": [
+    "Look at the error before answering: `err.name === 'ValidationError'` means the input broke a schema rule, so it's the client's fault (400).",
+    "A unique index violation has `err.code === 11000`. That's a conflict: 409.",
+    "Respond with only safe fields, e.g. `{ id: user._id, email: user.email }`, instead of the whole document."
+   ]
+  }
+ ]
+}
