@@ -1,5 +1,6 @@
 import { debugLabs } from "@/content";
-import { LabGrid, slim } from "@/components/lab/LabGrid";
+import { LabGrid } from "@/components/lab/LabGrid";
+import { slim } from "@/lib/slim";
 import { SectionTitle } from "@/components/ui";
 
 export const metadata = { title: "Debug Labs · BugForge" };

@@ -1,12 +1,16 @@
 {
-  "name": "platform",
+  "name": "bugforge",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "npx serve out",
+    "lint": "eslint",
+    "content": "node scripts/build-labs.mjs && node scripts/build-problems.mjs && node scripts/build-drills.mjs",
+    "content:labs": "node scripts/build-labs.mjs",
+    "content:dsa": "node scripts/build-problems.mjs",
+    "content:drills": "node scripts/build-drills.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

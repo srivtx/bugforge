@@ -4,11 +4,10 @@ import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { CheckCircle2, Clock, CircleDot, Search } from "lucide-react";
-import type { Lab } from "@/lib/types";
+import type { Slim } from "@/lib/slim";
 import { DifficultyBadge, Pill } from "@/components/ui";
 import { useProgress } from "@/lib/progress";
 
-type Slim = Pick<Lab, "slug" | "title" | "difficulty" | "minutes" | "tagline" | "concepts" | "lang" | "kind"> & { files: number; tests: number; bugs: number };
 
 export function LabGrid({ labs }: { labs: Slim[] }) {
   const progress = useProgress();
@@ -93,9 +92,4 @@ function Seg<T extends string>({ value, set, opts }: { value: T; set: (v: T) => 
       ))}
     </div>
   );
-}
-
-export function slim(l: Lab): Slim {
-  const testCount = Object.values(l.tests).reduce((n, src) => n + (src.match(/^\s*(test|it)(\.each\([^)]*\))?\(|^\s*def test_/gm) || []).length, 0);
-  return { slug: l.slug, title: l.title, difficulty: l.difficulty, minutes: l.minutes, tagline: l.tagline, concepts: l.concepts, lang: l.lang, kind: l.kind, files: Object.keys(l.files).length, tests: testCount, bugs: l.bugs.length };
 }
