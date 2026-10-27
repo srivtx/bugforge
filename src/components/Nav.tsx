@@ -2,8 +2,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Bug, Hammer, Infinity as InfinityIcon, Zap, Code2, Boxes, BarChart3, GraduationCap, Sun, Moon, Menu } from "lucide-react";
-import { useState } from "react";
+import { Bug, Hammer, Infinity as InfinityIcon, Zap, Code2, Boxes, BarChart3, GraduationCap, Sun, Moon, Menu, Star, Github } from "lucide-react";
+import { useEffect, useState } from "react";
+import { bug } from "@/content/sprites";
 import clsx from "clsx";
 import { setTheme, useTheme } from "@/lib/theme";
 
@@ -18,19 +19,71 @@ const links = [
   { href: "/progress", label: "Progress", icon: BarChart3, color: "var(--violet)" },
 ];
 
+// The pixel bug mascot, one rect per horizontal run of colour.
+const MARK = bug.rows.flatMap((row, y) => {
+  const runs: { x: number; y: number; w: number; c: string }[] = [];
+  for (let x = 0; x < row.length; ) {
+    const ch = row[x];
+    let e = x;
+    while (e < row.length && row[e] === ch) e++;
+    if (ch !== ".") runs.push({ x, y, w: e - x, c: bug.palette[ch] });
+    x = e;
+  }
+  return runs;
+});
+
+export function BugMark({ size = 26 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-0.5 -0.5 17 18" shapeRendering="crispEdges" aria-hidden>
+      {MARK.map((r, i) => (
+        <rect key={i} x={r.x} y={r.y} width={r.w} height={1} fill={r.c} />
+      ))}
+    </svg>
+  );
+}
+
 export function Logo() {
   return (
     <span className="flex items-center gap-2.5 text-[17px] font-bold tracking-tight">
-      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden>
-        <polygon points="14,2 25,8 14,14 3,8" fill="var(--amber)" />
-        <polygon points="3,8 14,14 14,26 3,20" fill="var(--orange)" />
-        <polygon points="25,8 14,14 14,26 25,20" fill="var(--orange-edge)" />
-        <rect x="11.5" y="6.2" width="5" height="3.2" rx="1" fill="var(--panel)" opacity="0.9" />
-      </svg>
+      <span className="grid h-8 w-8 place-items-center rounded-lg border border-line bg-[#fbf8f2]">
+        <BugMark size={24} />
+      </span>
       <span>
         Bug<span className="text-orange">Forge</span>
       </span>
     </span>
+  );
+}
+
+export const REPO = "srivtx/bugforge";
+
+/** Star-on-GitHub button with the live star count (cached for the session; hidden if the API is unreachable). */
+export function StarButton({ className }: { className?: string }) {
+  const [stars, setStars] = useState<number | null>(null);
+  useEffect(() => {
+    const k = "bugforge.stars";
+    try {
+      const c = sessionStorage.getItem(k);
+      if (c) return setStars(Number(c));
+    } catch {}
+    fetch(`https://api.github.com/repos/${REPO}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (typeof d?.stargazers_count !== "number") return;
+        setStars(d.stargazers_count);
+        try {
+          sessionStorage.setItem(k, String(d.stargazers_count));
+        } catch {}
+      })
+      .catch(() => {});
+  }, []);
+  return (
+    <a href={`https://github.com/${REPO}`} target="_blank" rel="noreferrer" className={clsx("vx-btn group inline-flex h-9 items-center gap-2 border-2 border-line bg-panel px-3 text-sm font-semibold", className)} aria-label="Star BugForge on GitHub">
+      <Github className="h-4 w-4" />
+      <span className="hidden sm:inline">Star</span>
+      <Star className="h-3.5 w-3.5 text-amber transition group-hover:fill-[var(--amber)]" />
+      {stars !== null && <span className="font-pixel text-xs tabular-nums text-muted">{stars}</span>}
+    </a>
   );
 }
 
@@ -73,6 +126,7 @@ export function Nav() {
           })}
         </nav>
         <div className="ml-auto flex items-center gap-2">
+          <StarButton />
           <ThemeToggle />
           <button onClick={() => setOpen((o) => !o)} className="vx-btn grid h-9 w-9 place-items-center border-2 border-line bg-panel text-muted xl:hidden" aria-label="Menu">
             <Menu className="h-4 w-4" />

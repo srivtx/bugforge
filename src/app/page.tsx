@@ -3,6 +3,7 @@ import { Hero } from "@/components/home/Hero";
 import { debugLabs, buildLabs, drills, problems } from "@/content";
 import { HomeProgress } from "@/components/home/HomeProgress";
 import { PixelRows, ModePosters, EffectSheet, Chapter } from "@/components/home/PixelSections";
+import { StarButton, BugMark } from "@/components/Nav";
 
 const blocks = [
   { icon: Code2, c: "var(--violet)", t: "DSA coding", time: "40–90 min · 1–2 problems", d: "LeetCode-medium style in a HackerRank-like editor. Arrays, sliding window, hashing, heaps, BFS/DFS, greedy, DP. Hidden tests hit edge cases and large inputs." },
@@ -63,6 +64,20 @@ export default function Home() {
             );
           })}
         </ol>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-16">
+        <div className="flex flex-col items-start gap-5 rounded-2xl border border-line bg-[#fbf8f2] p-6 text-[#3b342f] shadow-[0_4px_0_var(--edge)] sm:flex-row sm:items-center">
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-xl border border-[#3b342f]/10 bg-white/60">
+            <BugMark size={44} />
+          </span>
+          <div className="flex-1">
+            <div className="px-label text-[#8c7f6c]">10 / Open source</div>
+            <p className="mt-1 text-xl font-semibold tracking-tight">Free forever, MIT licensed. If it helps you prep, leave a star.</p>
+            <p className="mt-1 text-sm text-[#6d675f]">New labs, lessons and drills are welcome as pull requests: every one is verified at build time.</p>
+          </div>
+          <StarButton className="!bg-white text-[#3b342f]" />
+        </div>
       </section>
 
       <footer className="mx-auto flex max-w-7xl flex-wrap justify-between gap-2 border-t border-line px-4 pb-12 pt-4 text-dim">

@@ -1,15 +1,18 @@
 <div align="center">
 
-# 🟧 BugForge
-
-**Break it. Fix it. Build it.**
+<img src="docs/banner.svg" alt="BugForge: Break it. Fix it. Build it." width="100%"/>
 
 A free, browser-only practice arena for coding interviews and online assessments.<br/>
-Debug real multi-file codebases, build components from a spec, and drill DSA patterns, with 3D voxel visualizations and an explanation on every screen.
+Debug real multi-file codebases, build components from a spec, learn Node, databases and Python with runnable exercises, and drill DSA patterns.
 
 No account, no backend, no API keys. Everything runs in your browser.
 
-`MIT` · `Next.js 15` · `React 19` · `three.js` · `Monaco` · `Pyodide` · `Tailwind v4`
+[![Star on GitHub](https://img.shields.io/github/stars/srivtx/bugforge?style=flat&logo=github&label=Star&color=e5823e)](https://github.com/srivtx/bugforge)
+![MIT](https://img.shields.io/badge/license-MIT-3b342f)
+![Next.js 15](https://img.shields.io/badge/Next.js-15-3b342f)
+![React 19](https://img.shields.io/badge/React-19-3b342f)
+
+If BugForge helps you prep, a ⭐ helps other people find it.
 
 </div>
 
@@ -33,7 +36,7 @@ That skill comes from repetition, and most practice sites don't offer it. BugFor
 | ⚡ **Spot the Bug** (65) | Rapid-fire drills in JavaScript, Python, Java and C++. Click the buggy line, pick the diagnosis, then read why it's wrong and what the fix is. |
 | 🧮 **DSA** (30) | Problems grouped by pattern. Hidden test suites include large inputs that catch O(n²) solutions. Each problem has progressive hints, a written approach and a step-by-step visualization. Solve in JS or Python. |
 | 🧊 **3D Lab** | An orbitable voxel world where HTTP requests hit MongoDB collections (one voxel per document, and matches light up), plus an algorithm playground with editable inputs. |
-| 📚 **Learn** | Short visual explainers: debugging playbook, event loop, Express pipeline, Mongoose, HTTP status codes, async pitfalls, JS/Python gotchas, concurrency and a pattern cheat sheet. Each one links to the labs that test it. |
+| 📚 **Learn** (43 lessons) | Four tracks: **Core** (debugging playbook, patterns, concurrency), **Node.js** (modules, errors, auth, webhooks, caching, Jest, security…), **Databases** (Mongoose from zero, every lesson with runnable exercises, hints, XP and progress) and **Python** (data model, iteration, exceptions, collections, asyncio…). Each lesson links to the labs that test it. |
 | 📈 **Progress** | Local-only stats, an activity heatmap, accuracy by topic and "up next" suggestions. Export or import as JSON. |
 
 Light and dark themes follow your system and can be toggled.
@@ -66,6 +69,7 @@ All content is checked at build time, so nothing broken ships:
 - **Labs:** the buggy code must *fail* the tests, and the reference fix must *pass all of them*.
 - **DSA:** each problem's reference solution is cross-checked against a brute-force solution and a Python version on seeded random tests. That run also produces the hidden test files.
 - **Drills:** each one is checked for exactly one marked buggy line and a unique id.
+- **Lesson exercises:** every starter must fail at least one test, and every solution must pass all of them.
 
 ## Run locally
 
@@ -102,6 +106,7 @@ npm run content          # everything
 npm run content:labs     # verify labs: buggy fails, fixed passes
 npm run content:dsa      # verify DSA problems and generate hidden tests
 npm run content:drills   # compile spot-the-bug drills
+npm run content:exercises # verify lesson exercises: starter fails, solution passes
 ```
 
 <details>
@@ -136,7 +141,8 @@ Mark the buggy line with a trailing `// @bug` (or `# @bug`). The build strips th
 ## Project layout
 
 ```
-content-src/        lab, DSA and drill sources (verified at build time)
+content-src/        lab, DSA, drill and exercise sources (verified at build time)
+docs/               README art
 scripts/            build-time verifiers / compilers
 public/workers/     JS lab runtime, Pyodide runner, DSA judges
 public/tests/       generated hidden DSA tests
