@@ -9,7 +9,7 @@ Debug real multi-file codebases, build components from a spec, and drill DSA pat
 
 No account, no backend, no API keys. Everything runs in your browser.
 
-`Next.js 15` · `React 19` · `three.js` · `Monaco` · `Pyodide` · `Tailwind v4`
+`MIT` · `Next.js 15` · `React 19` · `three.js` · `Monaco` · `Pyodide` · `Tailwind v4`
 
 </div>
 
@@ -148,3 +148,7 @@ src/lib/            progress store, bug mutation engine, theme
 ## Contributing
 
 New labs, drills and problems are very welcome. Add a file to `content-src/`, run `npm run content`, and open a PR. If verification passes, it works.
+
+## License
+
+[MIT](LICENSE)
