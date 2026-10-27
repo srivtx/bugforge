@@ -138,9 +138,9 @@ function SpriteCard({ sprite, label, tl, br }: { sprite: Sprite; label: string; 
 
 // Flat-colour poster cards, the same in both themes.
 const posters = [
-  { n: "04", href: "/drills", title: "Spot the Bug", sprite: bolt, bg: "#ff9a3c", body: "Timed: click the buggy line in JS, Python, Java and C++." },
-  { n: "05", href: "/dsa", title: "DSA Arena", sprite: tree, bg: "#b7acff", body: "OA-style problems, hidden tests, hints and visualizations." },
-  { n: "06", href: "/learn", title: "Learn Hub", sprite: book, bg: "#8fe0bf", body: "The event loop, middleware, HTTP and concurrency, drawn out." },
+  { n: "04", href: "/drills", title: "Spot the Bug", sprite: bolt, bg: "#f6dccb", body: "Timed: click the buggy line in JS, Python, Java and C++." },
+  { n: "05", href: "/dsa", title: "DSA Arena", sprite: tree, bg: "#e6e0f3", body: "OA-style problems, hidden tests, hints and visualizations." },
+  { n: "06", href: "/learn", title: "Learn Hub", sprite: book, bg: "#d8ecdf", body: "The event loop, middleware, HTTP and concurrency, drawn out." },
 ];
 
 export function ModePosters() {
@@ -159,7 +159,7 @@ export function ModePosters() {
       />
       <div className="grid gap-5 sm:grid-cols-3">
         {posters.map((p) => (
-          <Link key={p.href} href={p.href} className="group relative flex flex-col overflow-hidden rounded-2xl text-[#17151c] transition hover:-translate-y-1" style={{ background: p.bg }}>
+          <Link key={p.href} href={p.href} className="group relative flex flex-col overflow-hidden rounded-2xl border border-line text-[#17151c] shadow-[0_4px_0_var(--edge)] transition hover:-translate-y-1" style={{ background: p.bg }}>
             <div className="flex justify-between px-4 pt-4">
               <span className="px-label">{p.n}</span>
               <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
