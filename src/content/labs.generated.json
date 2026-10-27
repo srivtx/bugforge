@@ -911,5 +911,734 @@
    "falsy values",
    "boundary conditions"
   ]
+ },
+ {
+  "kind": "debug",
+  "lang": "py",
+  "slug": "py-bank-ledger",
+  "order": 20,
+  "title": "Python: Bank Ledger Integrity",
+  "difficulty": "Medium",
+  "minutes": 25,
+  "tagline": "Every account shares one history, and money vanishes in failed transfers.",
+  "ticket": "**FIN-12 · Ledger audit failed**\n\nAuditors found three problems in `bank/ledger.py`:\n\n1. Opening a new account shows **other customers' transactions** in its history (and tags).\n2. Balances drift: `0.1 + 0.2` shows as `0.30000000000000004`.\n3. A transfer to an unknown account **debited the sender** anyway, and someone withdrew a **negative** amount to mint money.\n\nMake `tests/test_ledger.py` pass. This is plain Python (`unittest`).",
+  "env": {},
+  "files": {
+   "bank/ledger.py": "from decimal import Decimal\n\n\nclass InsufficientFunds(Exception):\n    pass\n\n\nclass Account:\n    history = []  # list of (kind, amount) tuples\n\n    def __init__(self, owner, balance=0.0, tags=[]):\n        self.owner = owner\n        self.balance = balance\n        self.tags = tags\n        self.tags.append(\"new\")\n\n    def deposit(self, amount):\n        if amount <= 0:\n            raise ValueError(\"amount must be positive\")\n        self.balance += amount\n        self.history.append((\"deposit\", amount))\n\n    def withdraw(self, amount):\n        if amount > self.balance:\n            raise InsufficientFunds(self.owner)\n        self.balance -= amount\n        self.history.append((\"withdraw\", amount))\n\n\ndef transfer(src, dst, amount):\n    \"\"\"Move money atomically: either both sides change or neither does.\"\"\"\n    src.withdraw(amount)\n    if dst is None:\n        raise ValueError(\"unknown destination\")\n    dst.deposit(amount)\n"
+  },
+  "tests": {
+   "tests/test_ledger.py": "import unittest\nfrom decimal import Decimal\n\nfrom bank.ledger import Account, transfer, InsufficientFunds\n\n\nclass LedgerTests(unittest.TestCase):\n    def test_balances_are_exact_decimals(self):\n        \"\"\"0.1 + 0.2 must be exactly 0.3\"\"\"\n        a = Account(\"ana\")\n        a.deposit(\"0.1\")\n        a.deposit(\"0.2\")\n        self.assertEqual(a.balance, Decimal(\"0.3\"))\n\n    def test_history_is_per_account(self):\n        a, b = Account(\"ana\"), Account(\"bo\")\n        a.deposit(5)\n        self.assertEqual(len(a.history), 1)\n        self.assertEqual(b.history, [])\n\n    def test_tags_are_not_shared(self):\n        a, b = Account(\"ana\"), Account(\"bo\")\n        self.assertEqual(a.tags, [\"new\"])\n        self.assertEqual(b.tags, [\"new\"])\n\n    def test_cannot_withdraw_negative(self):\n        a = Account(\"ana\", 10)\n        with self.assertRaises(ValueError):\n            a.withdraw(-5)\n        self.assertEqual(a.balance, Decimal(\"10\"))\n\n    def test_insufficient_funds(self):\n        a = Account(\"ana\", 10)\n        with self.assertRaises(InsufficientFunds):\n            a.withdraw(11)\n\n    def test_transfer_is_atomic_on_bad_destination(self):\n        a = Account(\"ana\", 50)\n        with self.assertRaises(ValueError):\n            transfer(a, None, 20)\n        self.assertEqual(a.balance, Decimal(\"50\"))\n\n    def test_transfer_moves_money(self):\n        a, b = Account(\"ana\", 50), Account(\"bo\")\n        transfer(a, b, \"12.35\")\n        self.assertEqual((a.balance, b.balance), (Decimal(\"37.65\"), Decimal(\"12.35\")))\n\n\nif __name__ == \"__main__\":\n    unittest.main()\n"
+  },
+  "fixes": {
+   "bank/ledger.py": "from decimal import Decimal\n\n\nclass InsufficientFunds(Exception):\n    pass\n\n\nclass Account:\n    def __init__(self, owner, balance=\"0\", tags=None):\n        self.owner = owner\n        self.balance = Decimal(str(balance))\n        self.history = []  # list of (kind, amount) tuples\n        self.tags = list(tags) if tags else []\n        self.tags.append(\"new\")\n\n    def deposit(self, amount):\n        amount = Decimal(str(amount))\n        if amount <= 0:\n            raise ValueError(\"amount must be positive\")\n        self.balance += amount\n        self.history.append((\"deposit\", amount))\n\n    def withdraw(self, amount):\n        amount = Decimal(str(amount))\n        if amount <= 0:\n            raise ValueError(\"amount must be positive\")\n        if amount > self.balance:\n            raise InsufficientFunds(self.owner)\n        self.balance -= amount\n        self.history.append((\"withdraw\", amount))\n\n\ndef transfer(src, dst, amount):\n    \"\"\"Move money atomically: either both sides change or neither does.\"\"\"\n    if dst is None:\n        raise ValueError(\"unknown destination\")\n    src.withdraw(amount)\n    dst.deposit(amount)\n"
+  },
+  "bugs": [
+   {
+    "file": "bank/ledger.py",
+    "title": "class attribute shared by all instances",
+    "explain": "`history = []` at class level is **one list** shared by every Account. Create it in `__init__` as `self.history = []`."
+   },
+   {
+    "file": "bank/ledger.py",
+    "title": "mutable default argument",
+    "explain": "`tags=[]` is evaluated **once** when the function is defined, so every call shares it. Use `tags=None` and create a new list."
+   },
+   {
+    "file": "bank/ledger.py",
+    "title": "floats for money",
+    "explain": "Binary floats can't represent 0.1 exactly. Use `Decimal(str(x))`, which also accepts ints and strings."
+   },
+   {
+    "file": "bank/ledger.py",
+    "title": "validation after side effects",
+    "explain": "Validate everything (destination, positive amount) **before** mutating state. Otherwise a failure leaves a half-done transfer."
+   }
+  ],
+  "hints": [
+   "Where does `history` live: the instance or the class?",
+   "When is a default argument value created in Python?",
+   "What happens to src.balance if dst is None?"
+  ],
+  "concepts": [
+   "class vs instance attributes",
+   "mutable defaults",
+   "Decimal money",
+   "atomicity / validate-first"
+  ]
+ },
+ {
+  "kind": "debug",
+  "lang": "py",
+  "slug": "py-token-bucket",
+  "order": 21,
+  "title": "Python: Token Bucket Rate Limiter",
+  "difficulty": "Medium",
+  "minutes": 25,
+  "tagline": "One noisy client throttles everyone, and limits never recover.",
+  "ticket": "**API-77 · Throttling misbehaves**\n\n- Client **A** hammering the API also gets **client B** throttled.\n- After a client is throttled, it stays blocked far longer than the configured rate allows.\n- With `rate=2` tokens/s, waiting 0.5s should give exactly one more request.\n- After a long idle period, clients get a burst **bigger than capacity**.",
+  "env": {},
+  "files": {
+   "limiter/bucket.py": "class TokenBucket:\n    \"\"\"capacity tokens max; refills `rate` tokens per second; allow() spends 1 token.\"\"\"\n\n    def __init__(self, capacity, rate, clock):\n        self.capacity = capacity\n        self.rate = rate\n        self.clock = clock  # callable returning seconds (float)\n        self.tokens = capacity\n        self.last = clock()\n\n    def _refill(self):\n        now = self.clock()\n        elapsed = now - self.last\n        self.tokens = self.tokens + elapsed // 1 * self.rate\n        self.last = now\n\n    def allow(self):\n        self._refill()\n        self.tokens -= 1\n        if self.tokens >= 0:\n            return True\n        return False\n\n\nclass RateLimiter:\n    \"\"\"One bucket per client id.\"\"\"\n\n    def __init__(self, client_ids, capacity, rate, clock):\n        self.capacity = capacity\n        self.rate = rate\n        self.clock = clock\n        self.buckets = dict.fromkeys(client_ids, TokenBucket(capacity, rate, clock))\n\n    def allow(self, client_id):\n        if client_id not in self.buckets:\n            self.buckets[client_id] = TokenBucket(self.capacity, self.rate, self.clock)\n        return self.buckets[client_id].allow()\n"
+  },
+  "tests": {
+   "tests/test_bucket.py": "import unittest\n\nfrom limiter.bucket import TokenBucket, RateLimiter\n\n\nclass FakeClock:\n    def __init__(self):\n        self.t = 1000.0\n\n    def __call__(self):\n        return self.t\n\n    def advance(self, s):\n        self.t += s\n\n\nclass BucketTests(unittest.TestCase):\n    def setUp(self):\n        self.clock = FakeClock()\n\n    def test_burst_up_to_capacity(self):\n        b = TokenBucket(3, 1, self.clock)\n        self.assertEqual([b.allow() for _ in range(4)], [True, True, True, False])\n\n    def test_rejected_calls_do_not_go_into_debt(self):\n        b = TokenBucket(1, 1, self.clock)\n        b.allow()\n        for _ in range(5):\n            b.allow()\n        self.clock.advance(1)\n        self.assertTrue(b.allow())\n\n    def test_fractional_refill(self):\n        \"\"\"rate 2/s: after 0.5s exactly one token is back\"\"\"\n        b = TokenBucket(2, 2, self.clock)\n        b.allow(); b.allow()\n        self.clock.advance(0.5)\n        self.assertTrue(b.allow())\n        self.assertFalse(b.allow())\n\n    def test_refill_is_capped_at_capacity(self):\n        b = TokenBucket(2, 1, self.clock)\n        self.clock.advance(100)\n        self.assertEqual([b.allow() for _ in range(3)], [True, True, False])\n\n\nclass LimiterTests(unittest.TestCase):\n    def test_clients_have_independent_buckets(self):\n        clock = FakeClock()\n        rl = RateLimiter([\"a\", \"b\"], 1, 1, clock)\n        self.assertTrue(rl.allow(\"a\"))\n        self.assertTrue(rl.allow(\"b\"))\n        self.assertFalse(rl.allow(\"a\"))\n\n    def test_unknown_clients_get_a_bucket(self):\n        rl = RateLimiter([], 2, 1, FakeClock())\n        self.assertEqual([rl.allow(\"z\") for _ in range(3)], [True, True, False])\n"
+  },
+  "fixes": {
+   "limiter/bucket.py": "class TokenBucket:\n    \"\"\"capacity tokens max; refills `rate` tokens per second; allow() spends 1 token.\"\"\"\n\n    def __init__(self, capacity, rate, clock):\n        self.capacity = capacity\n        self.rate = rate\n        self.clock = clock  # callable returning seconds (float)\n        self.tokens = capacity\n        self.last = clock()\n\n    def _refill(self):\n        now = self.clock()\n        elapsed = now - self.last\n        self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)\n        self.last = now\n\n    def allow(self):\n        self._refill()\n        if self.tokens >= 1:\n            self.tokens -= 1\n            return True\n        return False\n\n\nclass RateLimiter:\n    \"\"\"One bucket per client id.\"\"\"\n\n    def __init__(self, client_ids, capacity, rate, clock):\n        self.capacity = capacity\n        self.rate = rate\n        self.clock = clock\n        self.buckets = {cid: TokenBucket(capacity, rate, clock) for cid in client_ids}\n\n    def allow(self, client_id):\n        if client_id not in self.buckets:\n            self.buckets[client_id] = TokenBucket(self.capacity, self.rate, self.clock)\n        return self.buckets[client_id].allow()\n"
+  },
+  "bugs": [
+   {
+    "file": "limiter/bucket.py",
+    "title": "dict.fromkeys shares one object",
+    "explain": "`dict.fromkeys(keys, value)` puts the **same** TokenBucket under every key. Use a dict comprehension to create one per client."
+   },
+   {
+    "file": "limiter/bucket.py",
+    "title": "spending before checking (token debt)",
+    "explain": "Decrementing first lets rejected calls push tokens negative, so the client must 'repay' before it recovers. Check `tokens >= 1`, then spend."
+   },
+   {
+    "file": "limiter/bucket.py",
+    "title": "floor division drops fractional refill",
+    "explain": "`elapsed // 1` truncates 0.5s to 0. Use `elapsed * rate`."
+   },
+   {
+    "file": "limiter/bucket.py",
+    "title": "no capacity cap",
+    "explain": "Clamp with `min(capacity, …)` so idle time can't build an unbounded burst."
+   }
+  ],
+  "hints": [
+   "What does `dict.fromkeys(['a','b'], X())` do with X()?",
+   "What is `0.5 // 1`?",
+   "Should a *rejected* call cost a token?"
+  ],
+  "concepts": [
+   "token bucket",
+   "shared references",
+   "floor vs true division",
+   "clamping",
+   "injectable clocks"
+  ]
+ },
+ {
+  "kind": "debug",
+  "lang": "py",
+  "slug": "py-log-analyzer",
+  "order": 22,
+  "title": "Python: Access-Log Analyzer",
+  "difficulty": "Medium",
+  "minutes": 25,
+  "tagline": "The on-call dashboard crashes on empty logs and miscounts errors.",
+  "ticket": "**OPS-33 · On-call summary is wrong**\n\nThe nightly access-log summary used by on-call:\n- crashes with `ValueError: max() arg is an empty sequence`, even on non-empty logs;\n- reports **0% errors** when there clearly were 5xx responses;\n- ignores lines with doubled spaces;\n- shows `17` instead of `16.7` for the error rate, and ties in top paths come out in random order.\n\nThe intended behaviour is in the `report` docstring.",
+  "env": {},
+  "files": {
+   "logs/analyzer.py": "import re\nfrom collections import Counter\n\n# 2026-01-15T10:00:01Z GET /api/orders 200 123ms\nLINE = re.compile(r\"^(\\S+) (\\S+) (\\S+) (\\d{3}) (\\d+)ms$\")\n\n\ndef parse(lines):\n    for raw in lines:\n        m = LINE.match(raw)\n        if not m:\n            continue\n        ts, method, path, status, ms = m.groups()\n        yield {\"method\": method, \"path\": path, \"status\": status, \"ms\": int(ms)}\n\n\ndef report(lines, top=2):\n    \"\"\"Summary of an access log.\n\n    - top_paths: the `top` most requested paths as (path, count), ties broken alphabetically\n    - error_rate: % of requests with status >= 500, rounded to 1 decimal\n    - p_slowest: the slowest request time in ms\n    - total: number of valid lines\n    \"\"\"\n    entries = parse(lines)\n    counts = Counter(e[\"path\"] for e in entries)\n    total = sum(counts.values())\n    errors = sum(1 for e in entries if e[\"status\"] >= \"500\")\n    slowest = max(e[\"ms\"] for e in entries)\n    return {\n        \"top_paths\": counts.most_common(top),\n        \"error_rate\": round(errors / total * 100) if total else 0.0,\n        \"p_slowest\": slowest,\n        \"total\": total,\n    }\n"
+  },
+  "tests": {
+   "tests/test_analyzer.py": "import unittest\n\nfrom logs.analyzer import report\n\nLOG = \"\"\"\n2026-01-15T10:00:01Z GET /api/orders 200 120ms\n2026-01-15T10:00:02Z GET /api/cart 200 80ms\n2026-01-15T10:00:03Z POST /api/orders 503 900ms\n2026-01-15T10:00:04Z GET  /api/cart   200  95ms\ngarbage line\n2026-01-15T10:00:05Z GET /api/users 404 30ms\n2026-01-15T10:00:06Z GET /api/users 200 1500ms\n\"\"\".strip().splitlines()\n\n\nclass AnalyzerTests(unittest.TestCase):\n    def test_total_counts_valid_lines_including_extra_spaces(self):\n        self.assertEqual(report(LOG)[\"total\"], 6)\n\n    def test_error_rate_one_decimal(self):\n        self.assertEqual(report(LOG)[\"error_rate\"], 16.7)\n\n    def test_slowest(self):\n        self.assertEqual(report(LOG)[\"p_slowest\"], 1500)\n\n    def test_top_paths_ties_alphabetical(self):\n        self.assertEqual(report(LOG, top=2)[\"top_paths\"], [(\"/api/cart\", 2), (\"/api/orders\", 2)])\n\n    def test_404_is_not_a_server_error(self):\n        r = report([\"t GET /x 404 1ms\", \"t GET /x 1000 1ms\", \"t GET /x 500 1ms\"])\n        self.assertEqual(r[\"error_rate\"], 50.0)\n\n    def test_empty_log(self):\n        self.assertEqual(report([]), {\"top_paths\": [], \"error_rate\": 0.0, \"p_slowest\": 0, \"total\": 0})\n"
+  },
+  "fixes": {
+   "logs/analyzer.py": "import re\nfrom collections import Counter\n\n# 2026-01-15T10:00:01Z GET /api/orders 200 123ms\nLINE = re.compile(r\"^(\\S+)\\s+(\\S+)\\s+(\\S+)\\s+(\\d{3})\\s+(\\d+)ms\\s*$\")\n\n\ndef parse(lines):\n    for raw in lines:\n        m = LINE.match(raw.strip())\n        if not m:\n            continue\n        ts, method, path, status, ms = m.groups()\n        yield {\"method\": method, \"path\": path, \"status\": int(status), \"ms\": int(ms)}\n\n\ndef report(lines, top=2):\n    \"\"\"Summary of an access log.\n\n    - top_paths: the `top` most requested paths as (path, count), ties broken alphabetically\n    - error_rate: % of requests with status >= 500, rounded to 1 decimal\n    - p_slowest: the slowest request time in ms\n    - total: number of valid lines\n    \"\"\"\n    entries = list(parse(lines))\n    counts = Counter(e[\"path\"] for e in entries)\n    total = len(entries)\n    errors = sum(1 for e in entries if e[\"status\"] >= 500)\n    slowest = max((e[\"ms\"] for e in entries), default=0)\n    ranked = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))\n    return {\n        \"top_paths\": ranked[:top],\n        \"error_rate\": round(errors / total * 100, 1) if total else 0.0,\n        \"p_slowest\": slowest,\n        \"total\": total,\n    }\n"
+  },
+  "bugs": [
+   {
+    "file": "logs/analyzer.py",
+    "title": "generator consumed more than once",
+    "explain": "`parse()` returns a generator. The first `Counter(...)` exhausts it, so later passes see **nothing** (`max()` of empty → ValueError). Materialise with `list(...)`."
+   },
+   {
+    "file": "logs/analyzer.py",
+    "title": "comparing status codes as strings",
+    "explain": "`'1000' >= '500'` is False and `'60' >= '500'` is True: string comparison is lexicographic. Convert to `int`."
+   },
+   {
+    "file": "logs/analyzer.py",
+    "title": "regex too strict about whitespace",
+    "explain": "Single literal spaces fail on `GET  /api/cart`. Use `\\\\s+`."
+   },
+   {
+    "file": "logs/analyzer.py",
+    "title": "rounding & tie-breaking",
+    "explain": "`round(x)` → int. Use `round(x, 1)`. `most_common` keeps insertion order on ties, so sort by `(-count, path)` explicitly. Use `max(..., default=0)` for empty input."
+   }
+  ],
+  "hints": [
+   "How many times can you iterate a generator?",
+   "Compare '1000' >= '500' in a Python shell.",
+   "What does round(16.666) return?"
+  ],
+  "concepts": [
+   "generators",
+   "string vs int comparison",
+   "regex whitespace",
+   "deterministic tie-breaks"
+  ]
+ },
+ {
+  "kind": "debug",
+  "lang": "py",
+  "slug": "py-meeting-scheduler",
+  "order": 23,
+  "title": "Python: Meeting Scheduler",
+  "difficulty": "Medium",
+  "minutes": 20,
+  "tagline": "Free-time finder offers slots that are actually busy.",
+  "ticket": "**CAL-8 · \"Find a time\" suggests busy slots**\n\nCalendar sync passes busy intervals **unsorted**. The free-slot finder then suggests times that are already booked, misses 30-minute slots when `min_len=30`, and `drop_cancelled` leaves some cancelled meetings behind.",
+  "env": {},
+  "files": {
+   "cal/scheduler.py": "def merge_busy(intervals):\n    \"\"\"Merge overlapping [start, end) busy intervals (minutes). Touching intervals merge too.\"\"\"\n    merged = []\n    for start, end in intervals:\n        if merged and start < merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n\n\ndef free_slots(busy, day_start, day_end, min_len):\n    \"\"\"Free gaps of at least `min_len` minutes between day_start and day_end.\"\"\"\n    slots = []\n    cursor = day_start\n    for start, end in merge_busy(busy):\n        if start - cursor > min_len:\n            slots.append((cursor, start))\n        cursor = end\n    if day_end - cursor > min_len:\n        slots.append((cursor, day_end))\n    return slots\n\n\ndef drop_cancelled(meetings):\n    \"\"\"Remove meetings whose status is 'cancelled' (in place) and return the list.\"\"\"\n    for m in meetings:\n        if m[\"status\"] is \"cancelled\":\n            meetings.remove(m)\n    return meetings\n"
+  },
+  "tests": {
+   "tests/test_scheduler.py": "import unittest\n\nfrom cal.scheduler import merge_busy, free_slots, drop_cancelled\n\n\nclass SchedulerTests(unittest.TestCase):\n    def test_merge_unsorted_input(self):\n        self.assertEqual(merge_busy([[60, 90], [0, 30], [20, 40]]), [[0, 40], [60, 90]])\n\n    def test_touching_intervals_merge(self):\n        self.assertEqual(merge_busy([[0, 30], [30, 60]]), [[0, 60]])\n\n    def test_free_slots_inclusive_min_length(self):\n        # 9:00-17:00 in minutes = 540-1020\n        busy = [[600, 660], [540, 570], [900, 1020]]\n        self.assertEqual(free_slots(busy, 540, 1020, 30), [(570, 600), (660, 900)])\n\n    def test_free_slot_at_end_of_day(self):\n        self.assertEqual(free_slots([[540, 990]], 540, 1020, 30), [(990, 1020)])\n\n    def test_drop_cancelled_removes_all_adjacent(self):\n        ms = [{\"id\": 1, \"status\": \"cancelled\"}, {\"id\": 2, \"status\": \"cancelled\"}, {\"id\": 3, \"status\": \"ok\"}]\n        out = drop_cancelled(ms)\n        self.assertEqual([m[\"id\"] for m in out], [3])\n        self.assertIs(out, ms)\n\n    def test_drop_cancelled_with_built_strings(self):\n        status = \"\".join([\"can\", \"celled\"])\n        ms = [{\"id\": 1, \"status\": status}, {\"id\": 2, \"status\": \"ok\"}]\n        self.assertEqual([m[\"id\"] for m in drop_cancelled(ms)], [2])\n"
+  },
+  "fixes": {
+   "cal/scheduler.py": "def merge_busy(intervals):\n    \"\"\"Merge overlapping [start, end) busy intervals (minutes). Touching intervals merge too.\"\"\"\n    merged = []\n    for start, end in sorted(intervals):\n        if merged and start <= merged[-1][1]:\n            merged[-1][1] = max(merged[-1][1], end)\n        else:\n            merged.append([start, end])\n    return merged\n\n\ndef free_slots(busy, day_start, day_end, min_len):\n    \"\"\"Free gaps of at least `min_len` minutes between day_start and day_end.\"\"\"\n    slots = []\n    cursor = day_start\n    for start, end in merge_busy(busy):\n        if start - cursor >= min_len:\n            slots.append((cursor, start))\n        cursor = max(cursor, end)\n    if day_end - cursor >= min_len:\n        slots.append((cursor, day_end))\n    return slots\n\n\ndef drop_cancelled(meetings):\n    \"\"\"Remove meetings whose status is 'cancelled' (in place) and return the list.\"\"\"\n    meetings[:] = [m for m in meetings if m[\"status\"] != \"cancelled\"]\n    return meetings\n"
+  },
+  "bugs": [
+   {
+    "file": "cal/scheduler.py",
+    "title": "merge assumes sorted input",
+    "explain": "The classic merge-intervals algorithm only works on intervals sorted by start. Iterate `sorted(intervals)`."
+   },
+   {
+    "file": "cal/scheduler.py",
+    "title": "boundary comparisons",
+    "explain": "Touching intervals should merge (`<=`), and a gap of exactly `min_len` qualifies (`>=`)."
+   },
+   {
+    "file": "cal/scheduler.py",
+    "title": "removing from a list while iterating it",
+    "explain": "`list.remove` shifts elements left and the iterator skips the next one. Rebuild the list (`meetings[:] = [...]` keeps it in place)."
+   },
+   {
+    "file": "cal/scheduler.py",
+    "title": "`is` compares identity, not value",
+    "explain": "Strings built at runtime are different objects. Use `==` / `!=` for value equality."
+   }
+  ],
+  "hints": [
+   "Does merge work if the 3rd interval starts before the 1st?",
+   "Is a 30-minute gap a valid 30-minute slot?",
+   "What happens to the index when you remove during a for loop?"
+  ],
+  "concepts": [
+   "merge intervals",
+   "boundaries",
+   "mutation during iteration",
+   "is vs =="
+  ]
+ },
+ {
+  "kind": "debug",
+  "lang": "py",
+  "slug": "py-ttl-cache",
+  "order": 24,
+  "title": "Python: TTL Cache Decorator",
+  "difficulty": "Easy",
+  "minutes": 15,
+  "tagline": "EUR prices come back in USD and None is never cached.",
+  "ticket": "**PRC-5 · Pricing cache returns wrong currency**\n\n`@ttl_cache` wraps the pricing lookup. Customers in Europe see **USD prices** after a US customer views the same SKU. Lookups that return `None` hit the database every time, and our tracing shows every cached function named `wrapper`.",
+  "env": {},
+  "files": {
+   "util/memo.py": "import time\n\n\ndef ttl_cache(seconds, clock=time.monotonic):\n    \"\"\"Cache results per (args, kwargs) for `seconds`. Exposes .cache_clear() and keeps\n    the wrapped function's __name__ and __doc__.\"\"\"\n\n    def decorator(fn):\n        store = {}\n\n        def wrapper(*args, **kwargs):\n            key = args\n            hit = store.get(key)\n            if hit and hit[0] and clock() - hit[1] < seconds:\n                return hit[0]\n            value = fn(*args, **kwargs)\n            store[key] = (value, clock())\n            return value\n\n        wrapper.cache_clear = store.clear\n        return wrapper\n\n    return decorator\n"
+  },
+  "tests": {
+   "tests/test_memo.py": "import unittest\n\nfrom util.memo import ttl_cache\n\n\nclass Clock:\n    def __init__(self):\n        self.t = 0.0\n\n    def __call__(self):\n        return self.t\n\n\nclass MemoTests(unittest.TestCase):\n    def setUp(self):\n        self.clock = Clock()\n        self.calls = 0\n        clock = self.clock\n\n        @ttl_cache(10, clock=clock)\n        def price(sku, currency=\"USD\"):\n            \"\"\"Look up a price.\"\"\"\n            self.calls += 1\n            return {\"USD\": 10, \"EUR\": 9}[currency] if sku else None\n\n        self.price = price\n\n    def test_caches_within_ttl(self):\n        self.price(\"a\"); self.price(\"a\")\n        self.assertEqual(self.calls, 1)\n\n    def test_kwargs_are_part_of_the_key(self):\n        self.assertEqual(self.price(\"a\", currency=\"USD\"), 10)\n        self.assertEqual(self.price(\"a\", currency=\"EUR\"), 9)\n\n    def test_expires_after_ttl(self):\n        self.price(\"a\")\n        self.clock.t = 11\n        self.price(\"a\")\n        self.assertEqual(self.calls, 2)\n\n    def test_falsy_results_are_cached_too(self):\n        self.price(\"\"); self.price(\"\")\n        self.assertEqual(self.calls, 1)\n\n    def test_metadata_preserved(self):\n        self.assertEqual(self.price.__name__, \"price\")\n        self.assertEqual(self.price.__doc__, \"Look up a price.\")\n\n    def test_cache_clear(self):\n        self.price(\"a\"); self.price.cache_clear(); self.price(\"a\")\n        self.assertEqual(self.calls, 2)\n"
+  },
+  "fixes": {
+   "util/memo.py": "import functools\nimport time\n\n\ndef ttl_cache(seconds, clock=time.monotonic):\n    \"\"\"Cache results per (args, kwargs) for `seconds`. Exposes .cache_clear() and keeps\n    the wrapped function's __name__ and __doc__.\"\"\"\n\n    def decorator(fn):\n        store = {}\n\n        @functools.wraps(fn)\n        def wrapper(*args, **kwargs):\n            key = (args, tuple(sorted(kwargs.items())))\n            hit = store.get(key)\n            if hit is not None and clock() - hit[1] < seconds:\n                return hit[0]\n            value = fn(*args, **kwargs)\n            store[key] = (value, clock())\n            return value\n\n        wrapper.cache_clear = store.clear\n        return wrapper\n\n    return decorator\n"
+  },
+  "bugs": [
+   {
+    "file": "util/memo.py",
+    "title": "cache key ignores kwargs",
+    "explain": "`key = args` makes `price('a', currency='EUR')` collide with `price('a')`. Include `tuple(sorted(kwargs.items()))`."
+   },
+   {
+    "file": "util/memo.py",
+    "title": "truthiness check on the cached value",
+    "explain": "`hit[0] and …` treats cached `None`, `0`, `''` or `[]` as a miss, so those lookups hit the DB every time. Check presence with `hit is not None`, never the value's truthiness."
+   },
+   {
+    "file": "util/memo.py",
+    "title": "missing functools.wraps",
+    "explain": "Decorators replace the function object. `@functools.wraps(fn)` copies `__name__`, `__doc__` and more."
+   }
+  ],
+  "hints": [
+   "Print the cache key for price('a', currency='EUR').",
+   "What does a decorator return, and what's its __name__?"
+  ],
+  "concepts": [
+   "decorators",
+   "functools.wraps",
+   "cache keys",
+   "TTL"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "js",
+  "slug": "build-rate-limiter",
+  "order": 101,
+  "title": "Build: Rate-Limit Middleware",
+  "difficulty": "Medium",
+  "minutes": 30,
+  "tagline": "Write a fixed-window limiter with proper headers from an empty stub.",
+  "ticket": "## Spec\n\nImplement `rateLimit({ windowMs, max, keyFn })` in `middleware/rateLimit.js`. The full contract is in the doc comment.\n\n**Why it matters:** rate limiting shows up constantly, both in \"build an API\" tasks and in system-design follow-ups. You'll need per-key state in a closure, time math, and correct HTTP semantics (`429`, `Retry-After`).\n\n**Approach to practise:**\n1. Read every test first and list the behaviours.\n2. Make the first test pass with the simplest code.\n3. Add behaviours one at a time, rerunning after each.",
+  "env": {},
+  "files": {
+   "app.js": "import express from 'express';\nimport { rateLimit } from './middleware/rateLimit.js';\n\nconst app = express();\napp.use(express.json());\n\nconst perUser = rateLimit({ windowMs: 60_000, max: 3, keyFn: (req) => req.get('x-api-key') || req.ip });\n\napp.get('/api/ping', perUser, (req, res) => res.json({ pong: true }));\napp.get('/api/health', (req, res) => res.json({ ok: true }));\n\nexport default app;\n",
+   "middleware/rateLimit.js": "/**\n * Fixed-window rate limiter middleware.\n *\n *   rateLimit({ windowMs, max, keyFn })\n *\n * - key each client with keyFn(req) (default: req.ip)\n * - allow at most `max` requests per key per window; the window starts at the key's FIRST request\n * - on every allowed response set header  X-RateLimit-Remaining: <requests left in window>\n * - when exceeded respond 429 { message: 'Too many requests' } with header Retry-After: <seconds, rounded up>\n * - once the window has passed, the key starts a fresh window\n *\n * Use Date.now() for time (tests control the clock).\n */\nexport function rateLimit({ windowMs, max, keyFn = (req) => req.ip }) {\n  // TODO: keep per-key state here (closure)\n\n  return (req, res, next) => {\n    // TODO: implement\n    next();\n  };\n}\n"
+  },
+  "tests": {
+   "tests/rateLimit.test.js": "import request from 'supertest';\nimport app from '../app.js';\n\nconst ping = (key) => request(app).get('/api/ping').set('x-api-key', key);\n\nbeforeEach(() => jest.useFakeTimers());\nafterEach(() => jest.useRealTimers());\n\ntest('allows up to max requests and counts down the remaining header', async () => {\n  const r1 = await ping('k1');\n  const r2 = await ping('k1');\n  const r3 = await ping('k1');\n  expect([r1.status, r2.status, r3.status]).toEqual([200, 200, 200]);\n  expect([r1.headers['x-ratelimit-remaining'], r2.headers['x-ratelimit-remaining'], r3.headers['x-ratelimit-remaining']]).toEqual(['2', '1', '0']);\n});\n\ntest('the request over the limit gets 429 with a JSON body', async () => {\n  for (let i = 0; i < 3; i++) await ping('k2');\n  const res = await ping('k2');\n  expect(res.status).toBe(429);\n  expect(res.body).toEqual({ message: 'Too many requests' });\n});\n\ntest('Retry-After is the seconds left in the window, rounded up', async () => {\n  for (let i = 0; i < 3; i++) await ping('k3');\n  jest.advanceTimersByTime(20_500);\n  const res = await ping('k3');\n  expect(res.headers['retry-after']).toBe('40');\n});\n\ntest('keys are independent', async () => {\n  for (let i = 0; i < 3; i++) await ping('k4');\n  expect((await ping('k5')).status).toBe(200);\n});\n\ntest('a new window starts after windowMs', async () => {\n  for (let i = 0; i < 4; i++) await ping('k6');\n  jest.advanceTimersByTime(60_000);\n  const res = await ping('k6');\n  expect(res.status).toBe(200);\n  expect(res.headers['x-ratelimit-remaining']).toBe('2');\n});\n\ntest('unlimited routes are unaffected', async () => {\n  for (let i = 0; i < 10; i++) await request(app).get('/api/health');\n  expect((await request(app).get('/api/health')).status).toBe(200);\n});\n"
+  },
+  "fixes": {
+   "middleware/rateLimit.js": "/**\n * Fixed-window rate limiter middleware.\n *\n *   rateLimit({ windowMs, max, keyFn })\n *\n * - key each client with keyFn(req) (default: req.ip)\n * - allow at most `max` requests per key per window; the window starts at the key's FIRST request\n * - on every allowed response set header  X-RateLimit-Remaining: <requests left in window>\n * - when exceeded respond 429 { message: 'Too many requests' } with header Retry-After: <seconds, rounded up>\n * - once the window has passed, the key starts a fresh window\n *\n * Use Date.now() for time (tests control the clock).\n */\nexport function rateLimit({ windowMs, max, keyFn = (req) => req.ip }) {\n  const windows = new Map(); // key -> { start, count }\n\n  return (req, res, next) => {\n    const key = keyFn(req);\n    const now = Date.now();\n    let w = windows.get(key);\n    if (!w || now - w.start >= windowMs) {\n      w = { start: now, count: 0 };\n      windows.set(key, w);\n    }\n    if (w.count >= max) {\n      const retryAfter = Math.ceil((w.start + windowMs - now) / 1000);\n      res.set('Retry-After', String(retryAfter));\n      return res.status(429).json({ message: 'Too many requests' });\n    }\n    w.count++;\n    res.set('X-RateLimit-Remaining', String(max - w.count));\n    next();\n  };\n}\n"
+  },
+  "bugs": [
+   {
+    "file": "middleware/rateLimit.js",
+    "title": "State per key",
+    "explain": "Create a `Map` *outside* the returned middleware (closure) holding `{ start, count }` per key."
+   },
+   {
+    "file": "middleware/rateLimit.js",
+    "title": "Window rollover",
+    "explain": "If there's no entry, or `now - start >= windowMs`, start a fresh window `{ start: now, count: 0 }`."
+   },
+   {
+    "file": "middleware/rateLimit.js",
+    "title": "Reject when full",
+    "explain": "If `count >= max`: set `Retry-After = ceil((start + windowMs - now) / 1000)` and `return res.status(429).json(...)`."
+   },
+   {
+    "file": "middleware/rateLimit.js",
+    "title": "Count & header, then next()",
+    "explain": "Increment `count`, set `X-RateLimit-Remaining` to `max - count`, call `next()`."
+   }
+  ],
+  "hints": [
+   "Where should the Map live so it survives between requests?",
+   "Headers are strings: `res.set('X-RateLimit-Remaining', String(n))`.",
+   "Fixed window vs sliding log: which one does the spec describe?"
+  ],
+  "concepts": [
+   "closures",
+   "fixed-window limiting",
+   "HTTP 429 + Retry-After",
+   "time math"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "js",
+  "slug": "build-notes-crud",
+  "order": 102,
+  "title": "Build: Notes REST API (CRUD)",
+  "difficulty": "Medium",
+  "minutes": 40,
+  "tagline": "Implement five endpoints with validation, filtering, sorting and proper status codes.",
+  "ticket": "## Spec\n\nThe model and routes exist. Implement the five handlers in `controllers/notes.js`; each one's contract is in its comment.\n\nYou'll practise the skills every backend task uses:\n- input validation → **400**; missing → **404**; malformed ids → **400**\n- **mass-assignment safety**: only update whitelisted fields\n- multi-key sorting: `pinned` desc, then `createdAt` desc\n- regex search with escaping\n\nTip: write `createNote` first, since every other test depends on it.",
+  "env": {},
+  "files": {
+   "app.js": "import express from 'express';\nimport notes from './routes/notes.js';\n\nconst app = express();\napp.use(express.json());\napp.use('/api/notes', notes);\napp.use((err, req, res, next) => res.status(500).json({ message: err.message }));\n\nexport default app;\n",
+   "routes/notes.js": "import { Router } from 'express';\nimport { listNotes, createNote, getNote, updateNote, deleteNote } from '../controllers/notes.js';\n\nconst router = Router();\nrouter.get('/', listNotes);\nrouter.post('/', createNote);\nrouter.get('/:id', getNote);\nrouter.patch('/:id', updateNote);\nrouter.delete('/:id', deleteNote);\n\nexport default router;\n",
+   "controllers/notes.js": "import Note from '../models/Note.js';\n\n// GET /api/notes?tag=work&q=meeting\n// -> 200 array; pinned notes first, then newest (createdAt desc).\n//    tag filters by tag; q is a case-insensitive substring match on title.\nexport const listNotes = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n\n// POST /api/notes { title, body?, tags?, pinned? } -> 201 note | 400 { message } when title is missing/blank\nexport const createNote = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n\n// GET /api/notes/:id -> 200 note | 404 { message: 'Note not found' } | 400 for a malformed id\nexport const getNote = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n\n// PATCH /api/notes/:id  partial update of title/body/tags/pinned only (ignore other fields)\n// -> 200 updated note | 404 | 400 (malformed id or blank title)\nexport const updateNote = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n\n// DELETE /api/notes/:id -> 204 | 404\nexport const deleteNote = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n",
+   "models/Note.js": "import mongoose from 'mongoose';\n\nconst noteSchema = new mongoose.Schema(\n  {\n    title: { type: String, required: true, trim: true },\n    body: { type: String, default: '' },\n    tags: { type: [String], default: [] },\n    pinned: { type: Boolean, default: false },\n  },\n  { timestamps: true }\n);\n\nexport default mongoose.model('Note', noteSchema);\n"
+  },
+  "tests": {
+   "tests/notes.test.js": "import request from 'supertest';\nimport app from '../app.js';\nimport Note from '../models/Note.js';\n\nbeforeEach(async () => {\n  jest.useFakeTimers();\n  await Note.deleteMany({});\n});\nafterEach(() => jest.useRealTimers());\n\nconst create = (body) => request(app).post('/api/notes').send(body);\n\ndescribe('create', () => {\n  test('201 with defaults', async () => {\n    const res = await create({ title: 'Standup' });\n    expect(res.status).toBe(201);\n    expect(res.body).toMatchObject({ title: 'Standup', body: '', tags: [], pinned: false });\n    expect(res.body._id).toBeDefined();\n  });\n  test('400 when title missing or blank', async () => {\n    expect((await create({ body: 'x' })).status).toBe(400);\n    expect((await create({ title: '   ' })).status).toBe(400);\n  });\n});\n\ndescribe('list', () => {\n  beforeEach(async () => {\n    await create({ title: 'Old work', tags: ['work'] });\n    jest.advanceTimersByTime(1000);\n    await create({ title: 'Groceries', tags: ['home'], pinned: true });\n    jest.advanceTimersByTime(1000);\n    await create({ title: 'New work meeting', tags: ['work'] });\n  });\n  test('pinned first, then newest', async () => {\n    const res = await request(app).get('/api/notes');\n    expect(res.body.map((n) => n.title)).toEqual(['Groceries', 'New work meeting', 'Old work']);\n  });\n  test('filter by tag', async () => {\n    const res = await request(app).get('/api/notes?tag=work');\n    expect(res.body.map((n) => n.title)).toEqual(['New work meeting', 'Old work']);\n  });\n  test('search title case-insensitively', async () => {\n    const res = await request(app).get('/api/notes?q=MEETING');\n    expect(res.body).toHaveLength(1);\n  });\n});\n\ndescribe('read / update / delete', () => {\n  let id;\n  beforeEach(async () => {\n    id = (await create({ title: 'Draft', body: 'v1' })).body._id;\n  });\n  test('get by id', async () => {\n    expect((await request(app).get('/api/notes/' + id)).body.title).toBe('Draft');\n  });\n  test('404 unknown and 400 malformed id', async () => {\n    expect((await request(app).get('/api/notes/65f000000000000000000000')).status).toBe(404);\n    expect((await request(app).get('/api/notes/abc')).status).toBe(400);\n  });\n  test('patch updates only provided allowed fields and returns the new doc', async () => {\n    const res = await request(app).patch('/api/notes/' + id).send({ pinned: true, hacker: 1 });\n    expect(res.status).toBe(200);\n    expect(res.body).toMatchObject({ title: 'Draft', body: 'v1', pinned: true });\n    expect(res.body.hacker).toBeUndefined();\n  });\n  test('patch rejects a blank title', async () => {\n    expect((await request(app).patch('/api/notes/' + id).send({ title: '' })).status).toBe(400);\n  });\n  test('delete then 404', async () => {\n    expect((await request(app).delete('/api/notes/' + id)).status).toBe(204);\n    expect((await request(app).delete('/api/notes/' + id)).status).toBe(404);\n  });\n});\n"
+  },
+  "fixes": {
+   "controllers/notes.js": "import mongoose from 'mongoose';\nimport Note from '../models/Note.js';\n\nconst ALLOWED = ['title', 'body', 'tags', 'pinned'];\nconst escape = (s) => s.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\nconst badId = (id) => !mongoose.isValidObjectId(id);\n\n// GET /api/notes?tag=work&q=meeting\n// -> 200 array; pinned notes first, then newest (createdAt desc).\n//    tag filters by tag; q is a case-insensitive substring match on title.\nexport const listNotes = async (req, res, next) => {\n  try {\n    const filter = {};\n    if (req.query.tag) filter.tags = req.query.tag;\n    if (req.query.q) filter.title = new RegExp(escape(String(req.query.q)), 'i');\n    const notes = await Note.find(filter).sort({ pinned: -1, createdAt: -1 });\n    res.json(notes);\n  } catch (err) {\n    next(err);\n  }\n};\n\n// POST /api/notes { title, body?, tags?, pinned? } -> 201 note | 400 { message } when title is missing/blank\nexport const createNote = async (req, res, next) => {\n  try {\n    const { title, body, tags, pinned } = req.body || {};\n    if (typeof title !== 'string' || !title.trim()) {\n      return res.status(400).json({ message: 'title is required' });\n    }\n    const note = await Note.create({ title, body, tags, pinned });\n    res.status(201).json(note);\n  } catch (err) {\n    next(err);\n  }\n};\n\n// GET /api/notes/:id -> 200 note | 404 { message: 'Note not found' } | 400 for a malformed id\nexport const getNote = async (req, res, next) => {\n  try {\n    if (badId(req.params.id)) return res.status(400).json({ message: 'Invalid id' });\n    const note = await Note.findById(req.params.id);\n    if (!note) return res.status(404).json({ message: 'Note not found' });\n    res.json(note);\n  } catch (err) {\n    next(err);\n  }\n};\n\n// PATCH /api/notes/:id  partial update of title/body/tags/pinned only (ignore other fields)\n// -> 200 updated note | 404 | 400 (malformed id or blank title)\nexport const updateNote = async (req, res, next) => {\n  try {\n    if (badId(req.params.id)) return res.status(400).json({ message: 'Invalid id' });\n    const update = {};\n    for (const k of ALLOWED) if (req.body[k] !== undefined) update[k] = req.body[k];\n    if ('title' in update && (typeof update.title !== 'string' || !update.title.trim())) {\n      return res.status(400).json({ message: 'title cannot be blank' });\n    }\n    const note = await Note.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });\n    if (!note) return res.status(404).json({ message: 'Note not found' });\n    res.json(note);\n  } catch (err) {\n    next(err);\n  }\n};\n\n// DELETE /api/notes/:id -> 204 | 404\nexport const deleteNote = async (req, res, next) => {\n  try {\n    if (badId(req.params.id)) return res.status(400).json({ message: 'Invalid id' });\n    const gone = await Note.findByIdAndDelete(req.params.id);\n    if (!gone) return res.status(404).json({ message: 'Note not found' });\n    res.status(204).end();\n  } catch (err) {\n    next(err);\n  }\n};\n"
+  },
+  "bugs": [
+   {
+    "file": "controllers/notes.js",
+    "title": "createNote",
+    "explain": "Validate `typeof title === 'string' && title.trim()`, then `Note.create` → 201."
+   },
+   {
+    "file": "controllers/notes.js",
+    "title": "listNotes",
+    "explain": "Build a filter object (`tags: tag` matches arrays containing the tag; escaped `RegExp` for q), then `.sort({ pinned: -1, createdAt: -1 })`."
+   },
+   {
+    "file": "controllers/notes.js",
+    "title": "getNote / deleteNote",
+    "explain": "Guard with `mongoose.isValidObjectId(id)` → 400; `null` result → 404; delete returns `204` with `res.status(204).end()`."
+   },
+   {
+    "file": "controllers/notes.js",
+    "title": "updateNote",
+    "explain": "Copy only `title, body, tags, pinned` from the body, validate a provided title, then `findByIdAndUpdate(id, { $set }, { new: true })`."
+   }
+  ],
+  "hints": [
+   "Mongo matches `{ tags: 'work' }` against arrays that contain 'work'.",
+   "Sort objects can have multiple keys; order matters.",
+   "Never pass req.body straight into an update."
+  ],
+  "concepts": [
+   "REST semantics",
+   "validation",
+   "mass assignment",
+   "multi-key sort",
+   "ObjectId validation"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "js",
+  "slug": "build-job-queue",
+  "order": 103,
+  "title": "Build: Concurrent Job Queue",
+  "difficulty": "Hard",
+  "minutes": 40,
+  "tagline": "A promise queue with a concurrency limit, retries, stats and onIdle().",
+  "ticket": "## Spec\n\nImplement `createQueue` in `lib/queue.js` (contract in the doc comment). This is the pattern behind upload managers, crawlers and background workers.\n\n**Key ideas:** keep a FIFO array of `{ task, resolve, reject }`; a `pump()` function starts tasks while `running < concurrency`; when a task settles, decrement `running` and pump again.",
+  "env": {},
+  "files": {
+   "lib/queue.js": "/**\n * createQueue({ concurrency = 1, retries = 0 })\n *\n * queue.add(task)  task: async () => value\n *   -> returns a Promise that resolves with the task's value\n *      (or rejects with its LAST error after 1 + retries attempts)\n * At most `concurrency` tasks run at the same time; the rest wait in FIFO order.\n *\n * queue.onIdle() -> Promise that resolves when nothing is running or waiting\n * queue.stats()  -> { running, pending, done, failed }\n */\nexport function createQueue({ concurrency = 1, retries = 0 } = {}) {\n  // TODO\n  return {\n    add(task) {\n      throw new Error('not implemented');\n    },\n    onIdle() {\n      throw new Error('not implemented');\n    },\n    stats() {\n      return { running: 0, pending: 0, done: 0, failed: 0 };\n    },\n  };\n}\n"
+  },
+  "tests": {
+   "tests/queue.test.js": "import { createQueue } from '../lib/queue.js';\n\n// a task we can resolve/reject by hand\nfunction deferred() {\n  let resolve, reject;\n  const p = new Promise((a, b) => ((resolve = a), (reject = b)));\n  return { p, resolve, reject };\n}\nconst tick = () => new Promise((r) => setTimeout(r, 0));\n\ntest('resolves with the task value', async () => {\n  const q = createQueue();\n  await expect(q.add(async () => 42)).resolves.toBe(42);\n});\n\ntest('never runs more than concurrency tasks at once', async () => {\n  const q = createQueue({ concurrency: 2 });\n  let active = 0;\n  let peak = 0;\n  const gates = [deferred(), deferred(), deferred(), deferred()];\n  gates.forEach((g) =>\n    q.add(async () => {\n      active++;\n      peak = Math.max(peak, active);\n      await g.p;\n      active--;\n    })\n  );\n  await tick();\n  expect(q.stats()).toMatchObject({ running: 2, pending: 2 });\n  gates.forEach((g) => g.resolve());\n  await q.onIdle();\n  expect(peak).toBe(2);\n});\n\ntest('runs waiting tasks in FIFO order', async () => {\n  const q = createQueue({ concurrency: 1 });\n  const order = [];\n  await Promise.all(['a', 'b', 'c'].map((x) => q.add(async () => order.push(x))));\n  expect(order).toEqual(['a', 'b', 'c']);\n});\n\ntest('retries failed tasks and resolves when an attempt succeeds', async () => {\n  const q = createQueue({ retries: 2 });\n  let n = 0;\n  const v = await q.add(async () => {\n    n++;\n    if (n < 3) throw new Error('flaky');\n    return 'ok';\n  });\n  expect(v).toBe('ok');\n  expect(n).toBe(3);\n});\n\ntest('rejects with the last error after exhausting retries; queue keeps going', async () => {\n  const q = createQueue({ retries: 1 });\n  let n = 0;\n  await expect(q.add(async () => { n++; throw new Error('e' + n); })).rejects.toThrow('e2');\n  await expect(q.add(async () => 'next')).resolves.toBe('next');\n  expect(q.stats()).toEqual({ running: 0, pending: 0, done: 1, failed: 1 });\n});\n\ntest('onIdle resolves immediately on an empty queue', async () => {\n  await expect(createQueue().onIdle()).resolves.toBeUndefined();\n});\n"
+  },
+  "fixes": {
+   "lib/queue.js": "/**\n * createQueue({ concurrency = 1, retries = 0 })\n *\n * queue.add(task)  task: async () => value\n *   -> returns a Promise that resolves with the task's value\n *      (or rejects with its LAST error after 1 + retries attempts)\n * At most `concurrency` tasks run at the same time; the rest wait in FIFO order.\n *\n * queue.onIdle() -> Promise that resolves when nothing is running or waiting\n * queue.stats()  -> { running, pending, done, failed }\n */\nexport function createQueue({ concurrency = 1, retries = 0 } = {}) {\n  const waiting = [];\n  let running = 0;\n  let done = 0;\n  let failed = 0;\n  let idleWaiters = [];\n\n  const checkIdle = () => {\n    if (running === 0 && waiting.length === 0) {\n      idleWaiters.forEach((r) => r());\n      idleWaiters = [];\n    }\n  };\n\n  async function runWithRetries(task) {\n    let lastErr;\n    for (let attempt = 0; attempt <= retries; attempt++) {\n      try {\n        return await task();\n      } catch (err) {\n        lastErr = err;\n      }\n    }\n    throw lastErr;\n  }\n\n  const pump = () => {\n    while (running < concurrency && waiting.length) {\n      const { task, resolve, reject } = waiting.shift();\n      running++;\n      runWithRetries(task)\n        .then(\n          (v) => {\n            done++;\n            resolve(v);\n          },\n          (e) => {\n            failed++;\n            reject(e);\n          }\n        )\n        .finally(() => {\n          running--;\n          pump();\n          checkIdle();\n        });\n    }\n  };\n\n  return {\n    add(task) {\n      return new Promise((resolve, reject) => {\n        waiting.push({ task, resolve, reject });\n        pump();\n      });\n    },\n    onIdle() {\n      if (running === 0 && waiting.length === 0) return Promise.resolve();\n      return new Promise((r) => idleWaiters.push(r));\n    },\n    stats() {\n      return { running, pending: waiting.length, done, failed };\n    },\n  };\n}\n"
+  },
+  "bugs": [
+   {
+    "file": "lib/queue.js",
+    "title": "Wrap each task in a promise",
+    "explain": "`add(task)` returns `new Promise((resolve, reject) => { waiting.push({ task, resolve, reject }); pump(); })`."
+   },
+   {
+    "file": "lib/queue.js",
+    "title": "pump()",
+    "explain": "`while (running < concurrency && waiting.length)`: shift a job, `running++`, run it, and in `finally` do `running--; pump();`."
+   },
+   {
+    "file": "lib/queue.js",
+    "title": "Retries",
+    "explain": "Loop `attempt = 0..retries`, return on success, remember the error, and throw the last one at the end."
+   },
+   {
+    "file": "lib/queue.js",
+    "title": "onIdle + stats",
+    "explain": "Keep a list of idle resolvers and flush it when `running === 0 && waiting.length === 0`."
+   }
+  ],
+  "hints": [
+   "You can store a Promise's resolve function and call it later.",
+   "When should pump() run? On add AND whenever a task finishes.",
+   "Count done/failed in the then/catch handlers."
+  ],
+  "concepts": [
+   "promises",
+   "concurrency limiting",
+   "FIFO scheduling",
+   "retries"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "js",
+  "slug": "build-event-emitter",
+  "order": 104,
+  "title": "Build: Event Emitter",
+  "difficulty": "Medium",
+  "minutes": 30,
+  "tagline": "on / once / off / emit with error isolation, a frequent interview build.",
+  "ticket": "## Spec\n\nImplement the `Emitter` class in `lib/emitter.js` (contract in the doc comment).\n\nWatch out for two classic traps:\n- **mutating the listener array while iterating it** (a `once` listener removes itself mid-emit)\n- **`off` for once-listeners**: the stored function is a wrapper, but the user passes the original",
+  "env": {},
+  "files": {
+   "lib/emitter.js": "/**\n * A tiny EventEmitter.\n *\n * on(event, fn)    subscribe; returns an unsubscribe function\n * once(event, fn)  subscribe for the next emit only\n * off(event, fn)   unsubscribe (works for once-listeners too, using the original fn)\n * emit(event, ...args) call listeners in subscription order; returns true if there were any\n *   - a listener that throws must not stop the others; collect errors and, after all\n *     listeners ran, emit them on the 'error' event (or rethrow the first if nobody listens to 'error')\n * listenerCount(event)\n */\nexport class Emitter {\n  // TODO\n}\n"
+  },
+  "tests": {
+   "tests/emitter.test.js": "import { Emitter } from '../lib/emitter.js';\n\ntest('on + emit passes args in order', () => {\n  const e = new Emitter();\n  const calls = [];\n  e.on('order', (id, total) => calls.push(['a', id, total]));\n  e.on('order', (id) => calls.push(['b', id]));\n  expect(e.emit('order', 7, 99)).toBe(true);\n  expect(calls).toEqual([['a', 7, 99], ['b', 7]]);\n});\n\ntest('emit with no listeners returns false', () => {\n  expect(new Emitter().emit('nothing')).toBe(false);\n});\n\ntest('on returns an unsubscribe function', () => {\n  const e = new Emitter();\n  const fn = jest.fn();\n  const off = e.on('x', fn);\n  off();\n  e.emit('x');\n  expect(fn).toHaveBeenCalledTimes(0);\n});\n\ntest('once fires a single time and can be removed with off(original)', () => {\n  const e = new Emitter();\n  const a = jest.fn();\n  const b = jest.fn();\n  e.once('x', a);\n  e.once('x', b);\n  e.off('x', b);\n  e.emit('x', 1);\n  e.emit('x', 2);\n  expect(a.mock.calls).toEqual([[1]]);\n  expect(b).toHaveBeenCalledTimes(0);\n});\n\ntest('removing a listener during emit does not skip the next one', () => {\n  const e = new Emitter();\n  const calls = [];\n  e.once('x', () => calls.push(1));\n  e.on('x', () => calls.push(2));\n  e.emit('x');\n  expect(calls).toEqual([1, 2]);\n});\n\ntest('a throwing listener does not stop others; error goes to \"error\" listeners', () => {\n  const e = new Emitter();\n  const after = jest.fn();\n  const onErr = jest.fn();\n  e.on('error', onErr);\n  e.on('x', () => {\n    throw new Error('bad listener');\n  });\n  e.on('x', after);\n  e.emit('x');\n  expect(after).toHaveBeenCalledTimes(1);\n  expect(onErr.mock.calls[0][0].message).toBe('bad listener');\n});\n\ntest('without an error listener the first error is rethrown after all listeners ran', () => {\n  const e = new Emitter();\n  const after = jest.fn();\n  e.on('x', () => {\n    throw new Error('boom');\n  });\n  e.on('x', after);\n  expect(() => e.emit('x')).toThrow('boom');\n  expect(after).toHaveBeenCalledTimes(1);\n});\n\ntest('listenerCount', () => {\n  const e = new Emitter();\n  e.on('a', () => {});\n  e.once('a', () => {});\n  expect(e.listenerCount('a')).toBe(2);\n  expect(e.listenerCount('b')).toBe(0);\n});\n"
+  },
+  "fixes": {
+   "lib/emitter.js": "/**\n * A tiny EventEmitter.\n *\n * on(event, fn)    subscribe; returns an unsubscribe function\n * once(event, fn)  subscribe for the next emit only\n * off(event, fn)   unsubscribe (works for once-listeners too, using the original fn)\n * emit(event, ...args) call listeners in subscription order; returns true if there were any\n *   - a listener that throws must not stop the others; collect errors and, after all\n *     listeners ran, emit them on the 'error' event (or rethrow the first if nobody listens to 'error')\n * listenerCount(event)\n */\nexport class Emitter {\n  constructor() {\n    this.listeners = new Map(); // event -> [{ fn, original }]\n  }\n\n  on(event, fn) {\n    if (!this.listeners.has(event)) this.listeners.set(event, []);\n    this.listeners.get(event).push({ fn, original: fn });\n    return () => this.off(event, fn);\n  }\n\n  once(event, fn) {\n    const wrapper = (...args) => {\n      this.off(event, fn);\n      return fn(...args);\n    };\n    if (!this.listeners.has(event)) this.listeners.set(event, []);\n    this.listeners.get(event).push({ fn: wrapper, original: fn });\n    return () => this.off(event, fn);\n  }\n\n  off(event, fn) {\n    const list = this.listeners.get(event);\n    if (!list) return;\n    const i = list.findIndex((l) => l.original === fn || l.fn === fn);\n    if (i >= 0) list.splice(i, 1);\n  }\n\n  emit(event, ...args) {\n    const list = this.listeners.get(event);\n    if (!list || list.length === 0) return false;\n    const errors = [];\n    for (const { fn } of [...list]) {\n      try {\n        fn(...args);\n      } catch (err) {\n        errors.push(err);\n      }\n    }\n    if (errors.length) {\n      if (event !== 'error' && this.listenerCount('error')) errors.forEach((e) => this.emit('error', e));\n      else throw errors[0];\n    }\n    return true;\n  }\n\n  listenerCount(event) {\n    return (this.listeners.get(event) || []).length;\n  }\n}\n"
+  },
+  "bugs": [
+   {
+    "file": "lib/emitter.js",
+    "title": "Storage",
+    "explain": "`Map<event, Array<{ fn, original }>>`. Keep the original so `off(event, original)` can find wrapped once-listeners."
+   },
+   {
+    "file": "lib/emitter.js",
+    "title": "emit over a snapshot",
+    "explain": "Iterate `[...list]` so removals during emit don't shift indices."
+   },
+   {
+    "file": "lib/emitter.js",
+    "title": "Error isolation",
+    "explain": "Wrap each call in try/catch, collect errors, then route them to `'error'` listeners or rethrow the first."
+   }
+  ],
+  "hints": [
+   "once = a wrapper that removes itself, then calls the original.",
+   "Why copy the array before looping?"
+  ],
+  "concepts": [
+   "observer pattern",
+   "closures",
+   "iteration safety",
+   "error isolation"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "js",
+  "slug": "build-leaderboard",
+  "order": 105,
+  "title": "Build: Game Leaderboard",
+  "difficulty": "Medium",
+  "minutes": 30,
+  "tagline": "Best-score tracking, competition ranking with ties, and 'players around me'.",
+  "ticket": "## Spec\n\nImplement `Leaderboard` in `lib/leaderboard.js`. Ranking rules are in the doc comment.\n\nThis exercises the details interviewers love: **multi-key comparators**, **tie handling** (`1, 1, 3, 4`), and **boundary-safe slicing**.",
+  "env": {},
+  "files": {
+   "lib/leaderboard.js": "/**\n * Leaderboard for a game service.\n *\n * submit(player, score, at)  keep each player's BEST score; `at` (ms timestamp) is when that best\n *                            score was first reached. A lower score never replaces a higher one.\n * top(n)       -> [{ rank, player, score }] best first.\n *                 Ties: same score => same rank (\"1224\" competition ranking),\n *                 ordered by who reached the score first (earlier `at` first).\n * rankOf(player) -> rank number, or null if unknown\n * around(player, k) -> up to k entries above and k below the player (same shape as top), or []\n */\nexport class Leaderboard {\n  // TODO\n}\n"
+  },
+  "tests": {
+   "tests/leaderboard.test.js": "import { Leaderboard } from '../lib/leaderboard.js';\n\nfunction board() {\n  const b = new Leaderboard();\n  b.submit('ana', 50, 1);\n  b.submit('bo', 80, 2);\n  b.submit('cy', 80, 3);\n  b.submit('di', 70, 4);\n  b.submit('ed', 10, 5);\n  return b;\n}\n\ntest('top orders by score desc', () => {\n  expect(board().top(2).map((r) => r.player)).toEqual(['bo', 'cy']);\n});\n\ntest('ties share a rank and the next rank skips (1224)', () => {\n  expect(board().top(4)).toEqual([\n    { rank: 1, player: 'bo', score: 80 },\n    { rank: 1, player: 'cy', score: 80 },\n    { rank: 3, player: 'di', score: 70 },\n    { rank: 4, player: 'ana', score: 50 },\n  ]);\n});\n\ntest('earlier achiever comes first among ties', () => {\n  const b = new Leaderboard();\n  b.submit('late', 100, 50);\n  b.submit('early', 100, 10);\n  expect(b.top(2).map((r) => r.player)).toEqual(['early', 'late']);\n});\n\ntest('keeps only the best score; lower submissions are ignored', () => {\n  const b = board();\n  b.submit('bo', 5, 99);\n  b.submit('ed', 90, 100);\n  expect(b.top(1)[0]).toEqual({ rank: 1, player: 'ed', score: 90 });\n  expect(b.rankOf('bo')).toBe(2);\n});\n\ntest('rankOf unknown is null', () => {\n  expect(board().rankOf('zed')).toBeNull();\n});\n\ntest('around returns neighbours clipped at the edges', () => {\n  const b = board();\n  expect(b.around('di', 1).map((r) => r.player)).toEqual(['cy', 'di', 'ana']);\n  expect(b.around('bo', 2).map((r) => r.player)).toEqual(['bo', 'cy', 'di']);\n  expect(b.around('nobody', 2)).toEqual([]);\n});\n"
+  },
+  "fixes": {
+   "lib/leaderboard.js": "/**\n * Leaderboard for a game service.\n *\n * submit(player, score, at)  keep each player's BEST score; `at` (ms timestamp) is when that best\n *                            score was first reached. A lower score never replaces a higher one.\n * top(n)       -> [{ rank, player, score }] best first.\n *                 Ties: same score => same rank (\"1224\" competition ranking),\n *                 ordered by who reached the score first (earlier `at` first).\n * rankOf(player) -> rank number, or null if unknown\n * around(player, k) -> up to k entries above and k below the player (same shape as top), or []\n */\nexport class Leaderboard {\n  constructor() {\n    this.best = new Map(); // player -> { score, at }\n  }\n\n  submit(player, score, at) {\n    const cur = this.best.get(player);\n    if (!cur || score > cur.score) this.best.set(player, { score, at });\n  }\n\n  ranked() {\n    const rows = [...this.best.entries()]\n      .map(([player, v]) => ({ player, score: v.score, at: v.at }))\n      .sort((a, b) => b.score - a.score || a.at - b.at || (a.player < b.player ? -1 : 1));\n    let rank = 0;\n    return rows.map((r, i) => {\n      if (i === 0 || r.score !== rows[i - 1].score) rank = i + 1;\n      return { rank, player: r.player, score: r.score };\n    });\n  }\n\n  top(n) {\n    return this.ranked().slice(0, n);\n  }\n\n  rankOf(player) {\n    const row = this.ranked().find((r) => r.player === player);\n    return row ? row.rank : null;\n  }\n\n  around(player, k) {\n    const rows = this.ranked();\n    const i = rows.findIndex((r) => r.player === player);\n    if (i < 0) return [];\n    return rows.slice(Math.max(0, i - k), i + k + 1);\n  }\n}\n"
+  },
+  "bugs": [
+   {
+    "file": "lib/leaderboard.js",
+    "title": "Best score per player",
+    "explain": "`Map<player, { score, at }>`. Only overwrite when the new score is strictly higher (keeps the earliest `at`)."
+   },
+   {
+    "file": "lib/leaderboard.js",
+    "title": "Comparator",
+    "explain": "`b.score - a.score || a.at - b.at`. The `||` chains tie-breakers because 0 is falsy."
+   },
+   {
+    "file": "lib/leaderboard.js",
+    "title": "Competition rank",
+    "explain": "Walk the sorted rows; when the score changes, `rank = index + 1`; otherwise keep the previous rank."
+   },
+   {
+    "file": "lib/leaderboard.js",
+    "title": "around()",
+    "explain": "`rows.slice(Math.max(0, i - k), i + k + 1)`. Clamp the start, and slice already clamps the end."
+   }
+  ],
+  "hints": [
+   "How do you chain tie-breakers in a JS comparator?",
+   "Dense rank (1,1,2) vs competition rank (1,1,3): which one is specified?"
+  ],
+  "concepts": [
+   "comparators",
+   "ranking",
+   "slicing",
+   "data modelling"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "js",
+  "slug": "build-jwt-auth",
+  "order": 106,
+  "title": "Build: Signup, Login & JWT Middleware",
+  "difficulty": "Hard",
+  "minutes": 40,
+  "tagline": "Implement a complete auth flow: hashing, tokens, expiry and a guard middleware.",
+  "ticket": "## Spec\n\nImplement `signup`, `login` and `requireAuth` in `controllers/auth.js`. Contracts are in the comments.\n\nAvailable libraries: `bcryptjs` (`hash`, `compare`), `jsonwebtoken` (`sign`, `verify`), and the `User` model with a `verify(password)` method.\n\nSecurity checklist the tests enforce: normalise emails, never leak hashes, same **401** message for \"no user\" and \"wrong password\" (no user enumeration), reject forged and expired tokens.",
+  "env": {
+   "JWT_SECRET": "build-lab-secret"
+  },
+  "files": {
+   "app.js": "import express from 'express';\nimport { signup, login, requireAuth } from './controllers/auth.js';\n\nconst app = express();\napp.use(express.json());\napp.post('/api/auth/signup', signup);\napp.post('/api/auth/login', login);\napp.get('/api/profile', requireAuth, (req, res) => res.json({ email: req.user.email }));\napp.use((err, req, res, next) => res.status(500).json({ message: err.message }));\n\nexport default app;\n",
+   "controllers/auth.js": "import jwt from 'jsonwebtoken';\nimport bcrypt from 'bcryptjs';\nimport User from '../models/User.js';\n\n// POST /api/auth/signup { email, password }\n//  -> 400 { message } if email lacks '@' or password shorter than 8\n//  -> 409 if the email is taken (case-insensitive)\n//  -> 201 { token, user: { id, email } }  (never return the hash)\nexport const signup = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n\n// POST /api/auth/login { email, password } -> 200 { token } | 401 { message: 'Invalid credentials' }\nexport const login = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n\n// Middleware: expects \"Authorization: Bearer <token>\" signed with process.env.JWT_SECRET (payload { sub: userId }).\n// Sets req.user = the user document, else 401 { message: 'Unauthorized' }.\nexport const requireAuth = async (req, res, next) => {\n  // TODO\n  res.status(501).json({ message: 'not implemented' });\n};\n",
+   "models/User.js": "import mongoose from 'mongoose';\nimport bcrypt from 'bcryptjs';\n\nconst userSchema = new mongoose.Schema({\n  email: { type: String, required: true, unique: true, lowercase: true, trim: true },\n  passwordHash: { type: String, required: true },\n});\n\nuserSchema.methods.verify = function (password) {\n  return bcrypt.compare(password, this.passwordHash);\n};\n\nexport default mongoose.model('User', userSchema);\n"
+  },
+  "tests": {
+   "tests/auth.test.js": "import request from 'supertest';\nimport jwt from 'jsonwebtoken';\nimport app from '../app.js';\nimport User from '../models/User.js';\n\nconst signup = (b) => request(app).post('/api/auth/signup').send(b);\nconst login = (b) => request(app).post('/api/auth/login').send(b);\nconst good = { email: 'Dev@Example.com', password: 'hunter2hunter2' };\n\nbeforeEach(async () => {\n  await User.deleteMany({});\n});\n\ntest('signup returns 201, a token and a safe user object', async () => {\n  const res = await signup(good);\n  expect(res.status).toBe(201);\n  expect(typeof res.body.token).toBe('string');\n  expect(res.body.user).toEqual({ id: expect.any(String), email: 'dev@example.com' });\n});\n\ntest('password is stored hashed', async () => {\n  await signup(good);\n  const u = await User.findOne({ email: 'dev@example.com' });\n  expect(u.passwordHash).not.toBe(good.password);\n});\n\ntest('signup validation', async () => {\n  expect((await signup({ email: 'nope', password: 'longenough' })).status).toBe(400);\n  expect((await signup({ email: 'a@b.c', password: 'short' })).status).toBe(400);\n});\n\ntest('duplicate email (different case) -> 409', async () => {\n  await signup(good);\n  expect((await signup({ ...good, email: 'DEV@example.com' })).status).toBe(409);\n});\n\ntest('login success and failure', async () => {\n  await signup(good);\n  expect((await login({ email: 'dev@EXAMPLE.com', password: good.password })).status).toBe(200);\n  expect((await login({ email: 'dev@example.com', password: 'wrongwrong' })).status).toBe(401);\n  expect((await login({ email: 'ghost@example.com', password: 'whatever1' })).status).toBe(401);\n});\n\ntest('protected route with a valid token', async () => {\n  const { body } = await signup(good);\n  const res = await request(app).get('/api/profile').set('Authorization', 'Bearer ' + body.token);\n  expect(res.body).toEqual({ email: 'dev@example.com' });\n});\n\ntest('protected route rejects missing, malformed, forged and expired tokens', async () => {\n  const { body } = await signup(good);\n  expect((await request(app).get('/api/profile')).status).toBe(401);\n  expect((await request(app).get('/api/profile').set('Authorization', body.token)).status).toBe(401);\n  const forged = jwt.sign({ sub: body.user.id }, 'not-the-secret');\n  expect((await request(app).get('/api/profile').set('Authorization', 'Bearer ' + forged)).status).toBe(401);\n  jest.useFakeTimers();\n  jest.advanceTimersByTime(2 * 60 * 60 * 1000);\n  expect((await request(app).get('/api/profile').set('Authorization', 'Bearer ' + body.token)).status).toBe(401);\n  jest.useRealTimers();\n});\n"
+  },
+  "fixes": {
+   "controllers/auth.js": "import jwt from 'jsonwebtoken';\nimport bcrypt from 'bcryptjs';\nimport User from '../models/User.js';\n\nconst issue = (user) => jwt.sign({ sub: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });\n\n// POST /api/auth/signup { email, password }\n//  -> 400 { message } if email lacks '@' or password shorter than 8\n//  -> 409 if the email is taken (case-insensitive)\n//  -> 201 { token, user: { id, email } }  (never return the hash)\nexport const signup = async (req, res, next) => {\n  try {\n    const { email, password } = req.body || {};\n    if (typeof email !== 'string' || !email.includes('@')) return res.status(400).json({ message: 'valid email required' });\n    if (typeof password !== 'string' || password.length < 8) return res.status(400).json({ message: 'password must be at least 8 characters' });\n    const normalized = email.trim().toLowerCase();\n    if (await User.exists({ email: normalized })) return res.status(409).json({ message: 'Email already registered' });\n    const user = await User.create({ email: normalized, passwordHash: await bcrypt.hash(password, 10) });\n    res.status(201).json({ token: issue(user), user: { id: user.id, email: user.email } });\n  } catch (err) {\n    next(err);\n  }\n};\n\n// POST /api/auth/login { email, password } -> 200 { token } | 401 { message: 'Invalid credentials' }\nexport const login = async (req, res, next) => {\n  try {\n    const { email, password } = req.body || {};\n    if (typeof email !== 'string' || typeof password !== 'string') return res.status(401).json({ message: 'Invalid credentials' });\n    const user = await User.findOne({ email: email.trim().toLowerCase() });\n    if (!user || !(await user.verify(password))) return res.status(401).json({ message: 'Invalid credentials' });\n    res.json({ token: issue(user) });\n  } catch (err) {\n    next(err);\n  }\n};\n\n// Middleware: expects \"Authorization: Bearer <token>\" signed with process.env.JWT_SECRET (payload { sub: userId }).\n// Sets req.user = the user document, else 401 { message: 'Unauthorized' }.\nexport const requireAuth = async (req, res, next) => {\n  const [scheme, token] = (req.get('authorization') || '').split(' ');\n  if (scheme !== 'Bearer' || !token) return res.status(401).json({ message: 'Unauthorized' });\n  try {\n    const { sub } = jwt.verify(token, process.env.JWT_SECRET);\n    const user = await User.findById(sub);\n    if (!user) return res.status(401).json({ message: 'Unauthorized' });\n    req.user = user;\n    next();\n  } catch {\n    res.status(401).json({ message: 'Unauthorized' });\n  }\n};\n"
+  },
+  "bugs": [
+   {
+    "file": "controllers/auth.js",
+    "title": "signup",
+    "explain": "Validate → normalise email → `User.exists` → 409 → `bcrypt.hash` → create → `jwt.sign({ sub: user.id }, secret, { expiresIn: '1h' })`."
+   },
+   {
+    "file": "controllers/auth.js",
+    "title": "login",
+    "explain": "Find by normalised email, `user.verify(password)`, identical 401 on any failure."
+   },
+   {
+    "file": "controllers/auth.js",
+    "title": "requireAuth",
+    "explain": "Split the header into scheme + token, `jwt.verify` inside try/catch (throws on bad signature or expiry), load the user, set `req.user`, `next()`."
+   }
+  ],
+  "hints": [
+   "`jwt.verify` throws. Wrap it in try/catch.",
+   "Why should 'unknown email' and 'wrong password' look identical?"
+  ],
+  "concepts": [
+   "password hashing",
+   "JWT",
+   "auth middleware",
+   "user enumeration"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "py",
+  "slug": "pybuild-kv-transactions",
+  "order": 110,
+  "title": "Build (Python): Transactional Key-Value Store",
+  "difficulty": "Hard",
+  "minutes": 40,
+  "tagline": "set/get/delete/count with nested BEGIN, ROLLBACK and COMMIT.",
+  "ticket": "## Spec\n\nImplement `KVStore` in `store/kv.py`. Contract in the docstring.\n\nThis is a well-known take-home and onsite problem. The elegant solution keeps an **undo log per open transaction**: before the first write to a key inside a transaction, remember its previous value. Rollback replays the top undo log. Keep `count` **O(1)** with a value → count map.",
+  "env": {},
+  "files": {
+   "store/kv.py": "class KVStore:\n    \"\"\"In-memory key-value store with nested transactions.\n\n    set(key, value), get(key) -> value or None, delete(key)\n    count(value) -> how many keys currently hold `value`\n    begin()      start a (possibly nested) transaction\n    rollback()   undo everything since the most recent begin(); raise RuntimeError(\"NO TRANSACTION\") if none\n    commit()     make ALL open transactions permanent; raise RuntimeError(\"NO TRANSACTION\") if none\n    \"\"\"\n\n    def __init__(self):\n        pass  # TODO\n\n    def set(self, key, value):\n        raise NotImplementedError\n\n    def get(self, key):\n        raise NotImplementedError\n\n    def delete(self, key):\n        raise NotImplementedError\n\n    def count(self, value):\n        raise NotImplementedError\n\n    def begin(self):\n        raise NotImplementedError\n\n    def rollback(self):\n        raise NotImplementedError\n\n    def commit(self):\n        raise NotImplementedError\n"
+  },
+  "tests": {
+   "tests/test_kv.py": "import unittest\n\nfrom store.kv import KVStore\n\n\nclass BasicTests(unittest.TestCase):\n    def test_set_get_delete(self):\n        s = KVStore()\n        s.set(\"a\", 10)\n        self.assertEqual(s.get(\"a\"), 10)\n        s.delete(\"a\")\n        self.assertIsNone(s.get(\"a\"))\n\n    def test_count_tracks_values(self):\n        s = KVStore()\n        s.set(\"a\", 10); s.set(\"b\", 10); s.set(\"b\", 20)\n        self.assertEqual((s.count(10), s.count(20), s.count(99)), (1, 1, 0))\n\n\nclass TransactionTests(unittest.TestCase):\n    def test_rollback_restores_previous_values(self):\n        s = KVStore()\n        s.set(\"a\", 1)\n        s.begin()\n        s.set(\"a\", 2); s.set(\"b\", 3); s.delete(\"a\")\n        s.rollback()\n        self.assertEqual((s.get(\"a\"), s.get(\"b\")), (1, None))\n        self.assertEqual(s.count(1), 1)\n\n    def test_nested_rollback_only_undoes_inner(self):\n        s = KVStore()\n        s.begin(); s.set(\"a\", 1)\n        s.begin(); s.set(\"a\", 2)\n        s.rollback()\n        self.assertEqual(s.get(\"a\"), 1)\n        s.rollback()\n        self.assertIsNone(s.get(\"a\"))\n\n    def test_commit_closes_all_transactions(self):\n        s = KVStore()\n        s.begin(); s.set(\"a\", 1); s.begin(); s.set(\"a\", 2)\n        s.commit()\n        self.assertEqual(s.get(\"a\"), 2)\n        with self.assertRaisesRegex(RuntimeError, \"NO TRANSACTION\"):\n            s.rollback()\n\n    def test_errors_without_transaction(self):\n        s = KVStore()\n        with self.assertRaises(RuntimeError):\n            s.commit()\n\n    def test_counts_after_rollback(self):\n        s = KVStore()\n        s.set(\"x\", \"v\")\n        s.begin(); s.set(\"y\", \"v\"); s.set(\"x\", \"w\")\n        self.assertEqual(s.count(\"v\"), 1)\n        s.rollback()\n        self.assertEqual((s.count(\"v\"), s.count(\"w\")), (1, 0))\n"
+  },
+  "fixes": {
+   "store/kv.py": "class KVStore:\n    \"\"\"In-memory key-value store with nested transactions.\n\n    set(key, value), get(key) -> value or None, delete(key)\n    count(value) -> how many keys currently hold `value`\n    begin()      start a (possibly nested) transaction\n    rollback()   undo everything since the most recent begin(); raise RuntimeError(\"NO TRANSACTION\") if none\n    commit()     make ALL open transactions permanent; raise RuntimeError(\"NO TRANSACTION\") if none\n    \"\"\"\n\n    _MISSING = object()\n\n    def __init__(self):\n        self.data = {}\n        self.counts = {}\n        self.undo_stack = []  # one dict per open transaction: key -> previous value (or _MISSING)\n\n    def _write(self, key, value):\n        old = self.data.get(key, self._MISSING)\n        if self.undo_stack and key not in self.undo_stack[-1]:\n            self.undo_stack[-1][key] = old\n        if old is not self._MISSING:\n            self.counts[old] -= 1\n        if value is self._MISSING:\n            self.data.pop(key, None)\n        else:\n            self.data[key] = value\n            self.counts[value] = self.counts.get(value, 0) + 1\n\n    def set(self, key, value):\n        self._write(key, value)\n\n    def get(self, key):\n        return self.data.get(key)\n\n    def delete(self, key):\n        if key in self.data:\n            self._write(key, self._MISSING)\n\n    def count(self, value):\n        return self.counts.get(value, 0)\n\n    def begin(self):\n        self.undo_stack.append({})\n\n    def rollback(self):\n        if not self.undo_stack:\n            raise RuntimeError(\"NO TRANSACTION\")\n        undo = self.undo_stack.pop()\n        for key, old in undo.items():\n            # write without recording into the (now) outer transaction twice\n            cur = self.data.get(key, self._MISSING)\n            if cur is not self._MISSING:\n                self.counts[cur] -= 1\n            if old is self._MISSING:\n                self.data.pop(key, None)\n            else:\n                self.data[key] = old\n                self.counts[old] = self.counts.get(old, 0) + 1\n\n    def commit(self):\n        if not self.undo_stack:\n            raise RuntimeError(\"NO TRANSACTION\")\n        self.undo_stack.clear()\n"
+  },
+  "bugs": [
+   {
+    "file": "store/kv.py",
+    "title": "Core state",
+    "explain": "`data` dict, `counts` dict (value → number of keys), and `undo_stack` (list of dicts)."
+   },
+   {
+    "file": "store/kv.py",
+    "title": "Single write path",
+    "explain": "Route set and delete through one `_write` that records the old value (once per key per transaction) and keeps `counts` in sync."
+   },
+   {
+    "file": "store/kv.py",
+    "title": "rollback / commit",
+    "explain": "Rollback pops the top undo dict and restores each key; commit just clears the stack. Both raise when the stack is empty."
+   }
+  ],
+  "hints": [
+   "Use a sentinel object to remember 'key did not exist'.",
+   "Only record the FIRST old value for a key per transaction."
+  ],
+  "concepts": [
+   "undo logs",
+   "nested transactions",
+   "sentinels",
+   "O(1) counters"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "py",
+  "slug": "pybuild-parking-lot",
+  "order": 111,
+  "title": "Build (Python): Parking Lot OOD",
+  "difficulty": "Medium",
+  "minutes": 30,
+  "tagline": "The most famous object-oriented design question, implemented and tested.",
+  "ticket": "## Spec\n\nImplement `ParkingLot` in `lot/parking.py` (contract in the docstring).\n\nDesign-round follow-ups to think about while you code: how would you support **multiple floors**, **pricing**, **reservations**, or **concurrent gates**? A min-heap of free spots per size gives O(log n) park/leave.",
+  "env": {},
+  "files": {
+   "lot/parking.py": "from enum import IntEnum\n\n\nclass Size(IntEnum):\n    MOTORCYCLE = 1\n    CAR = 2\n    VAN = 3\n\n\nclass ParkingLot:\n    \"\"\"Object-oriented parking lot.\n\n    ParkingLot({Size.MOTORCYCLE: 2, Size.CAR: 3, Size.VAN: 1})  spots per size\n\n    park(plate, size) -> spot id like \"CAR-0\"; a vehicle takes the SMALLEST free spot that fits\n                         (a spot fits if spot size >= vehicle size), lowest index first.\n                         Returns None if no spot fits. Parking an already-parked plate raises ValueError.\n    leave(plate)      -> the freed spot id; KeyError if the plate isn't parked\n    available(size)   -> number of free spots of exactly that size\n    where(plate)      -> spot id or None\n    \"\"\"\n\n    def __init__(self, spots):\n        pass  # TODO\n\n    def park(self, plate, size):\n        raise NotImplementedError\n\n    def leave(self, plate):\n        raise NotImplementedError\n\n    def available(self, size):\n        raise NotImplementedError\n\n    def where(self, plate):\n        raise NotImplementedError\n"
+  },
+  "tests": {
+   "tests/test_parking.py": "import unittest\n\nfrom lot.parking import ParkingLot, Size\n\n\ndef lot():\n    return ParkingLot({Size.MOTORCYCLE: 1, Size.CAR: 2, Size.VAN: 1})\n\n\nclass ParkingTests(unittest.TestCase):\n    def test_vehicle_takes_matching_size(self):\n        p = lot()\n        self.assertEqual(p.park(\"C1\", Size.CAR), \"CAR-0\")\n        self.assertEqual(p.park(\"M1\", Size.MOTORCYCLE), \"MOTORCYCLE-0\")\n\n    def test_falls_back_to_next_bigger_spot(self):\n        p = lot()\n        p.park(\"M1\", Size.MOTORCYCLE)\n        self.assertEqual(p.park(\"M2\", Size.MOTORCYCLE), \"CAR-0\")\n\n    def test_never_uses_smaller_spot(self):\n        p = lot()\n        p.park(\"V1\", Size.VAN)\n        self.assertIsNone(p.park(\"V2\", Size.VAN))\n\n    def test_lowest_free_index_is_reused(self):\n        p = lot()\n        p.park(\"A\", Size.CAR); p.park(\"B\", Size.CAR)\n        self.assertEqual(p.leave(\"A\"), \"CAR-0\")\n        self.assertEqual(p.park(\"C\", Size.CAR), \"CAR-0\")\n\n    def test_available_counts(self):\n        p = lot()\n        p.park(\"A\", Size.CAR)\n        self.assertEqual((p.available(Size.CAR), p.available(Size.VAN)), (1, 1))\n\n    def test_double_park_and_unknown_leave(self):\n        p = lot()\n        p.park(\"A\", Size.CAR)\n        with self.assertRaises(ValueError):\n            p.park(\"A\", Size.CAR)\n        with self.assertRaises(KeyError):\n            p.leave(\"ZZZ\")\n\n    def test_where(self):\n        p = lot()\n        p.park(\"A\", Size.VAN)\n        self.assertEqual(p.where(\"A\"), \"VAN-0\")\n        self.assertIsNone(p.where(\"B\"))\n"
+  },
+  "fixes": {
+   "lot/parking.py": "import heapq\nfrom enum import IntEnum\n\n\nclass Size(IntEnum):\n    MOTORCYCLE = 1\n    CAR = 2\n    VAN = 3\n\n\nclass ParkingLot:\n    \"\"\"Object-oriented parking lot.\n\n    ParkingLot({Size.MOTORCYCLE: 2, Size.CAR: 3, Size.VAN: 1})  spots per size\n\n    park(plate, size) -> spot id like \"CAR-0\"; a vehicle takes the SMALLEST free spot that fits\n                         (a spot fits if spot size >= vehicle size), lowest index first.\n                         Returns None if no spot fits. Parking an already-parked plate raises ValueError.\n    leave(plate)      -> the freed spot id; KeyError if the plate isn't parked\n    available(size)   -> number of free spots of exactly that size\n    where(plate)      -> spot id or None\n    \"\"\"\n\n    def __init__(self, spots):\n        # one min-heap of free indices per size -> O(log n) park/leave\n        self.free = {size: list(range(n)) for size, n in spots.items()}\n        for h in self.free.values():\n            heapq.heapify(h)\n        self.parked = {}  # plate -> (size, index)\n\n    def park(self, plate, size):\n        if plate in self.parked:\n            raise ValueError(f\"{plate} already parked\")\n        for spot_size in sorted(self.free):\n            if spot_size >= size and self.free[spot_size]:\n                idx = heapq.heappop(self.free[spot_size])\n                self.parked[plate] = (spot_size, idx)\n                return f\"{Size(spot_size).name}-{idx}\"\n        return None\n\n    def leave(self, plate):\n        spot_size, idx = self.parked.pop(plate)\n        heapq.heappush(self.free[spot_size], idx)\n        return f\"{Size(spot_size).name}-{idx}\"\n\n    def available(self, size):\n        return len(self.free.get(size, []))\n\n    def where(self, plate):\n        if plate not in self.parked:\n            return None\n        spot_size, idx = self.parked[plate]\n        return f\"{Size(spot_size).name}-{idx}\"\n"
+  },
+  "bugs": [
+   {
+    "file": "lot/parking.py",
+    "title": "Free-spot structure",
+    "explain": "One min-heap of free indices per size: `heapq.heappop` always yields the lowest free index."
+   },
+   {
+    "file": "lot/parking.py",
+    "title": "Best-fit search",
+    "explain": "Iterate sizes ascending, take the first size ≥ vehicle size that still has a free spot."
+   },
+   {
+    "file": "lot/parking.py",
+    "title": "Bookkeeping",
+    "explain": "`parked: plate → (size, index)` powers `leave`, `where` and the duplicate check."
+   }
+  ],
+  "hints": [
+   "IntEnum members compare like ints.",
+   "heapq turns a list into a priority queue in place."
+  ],
+  "concepts": [
+   "OOD",
+   "heaps",
+   "enums",
+   "invariants"
+  ]
+ },
+ {
+  "kind": "build",
+  "lang": "py",
+  "slug": "pybuild-file-system",
+  "order": 112,
+  "title": "Build (Python): In-Memory File System",
+  "difficulty": "Medium",
+  "minutes": 30,
+  "tagline": "mkdir -p, append-writes, ls, rm -r and du on a tree of nodes.",
+  "ticket": "## Spec\n\nImplement `FileSystem` in `fs/memfs.py` (contract in the docstring).\n\nThe core idea is a **trie of path segments**: each node has `children: dict`, `is_file` and `content`. Most methods are \"walk the path, then do one thing\". `du` is a recursive sum.",
+  "env": {},
+  "files": {
+   "fs/memfs.py": "class FileSystem:\n    \"\"\"In-memory file system with absolute paths (\"/a/b/c\").\n\n    mkdir(path)                 create directory and any missing parents\n    write(path, content)        create the file (and parents) or APPEND to it\n    read(path) -> str           FileNotFoundError if missing; IsADirectoryError for directories\n    ls(path) -> list[str]       directory: sorted child names; file: [file name]\n    rm(path)                    remove a file or a directory recursively; FileNotFoundError if missing\n    du(path) -> int             total characters in all files under path\n    \"\"\"\n\n    def __init__(self):\n        pass  # TODO\n\n    def mkdir(self, path):\n        raise NotImplementedError\n\n    def write(self, path, content):\n        raise NotImplementedError\n\n    def read(self, path):\n        raise NotImplementedError\n\n    def ls(self, path):\n        raise NotImplementedError\n\n    def rm(self, path):\n        raise NotImplementedError\n\n    def du(self, path):\n        raise NotImplementedError\n"
+  },
+  "tests": {
+   "tests/test_memfs.py": "import unittest\n\nfrom fs.memfs import FileSystem\n\n\nclass FsTests(unittest.TestCase):\n    def setUp(self):\n        self.fs = FileSystem()\n\n    def test_mkdir_creates_parents_and_ls_sorts(self):\n        self.fs.mkdir(\"/a/b/c\")\n        self.fs.mkdir(\"/a/aa\")\n        self.assertEqual(self.fs.ls(\"/a\"), [\"aa\", \"b\"])\n        self.assertEqual(self.fs.ls(\"/\"), [\"a\"])\n\n    def test_write_creates_and_appends(self):\n        self.fs.write(\"/logs/app.log\", \"hello\")\n        self.fs.write(\"/logs/app.log\", \" world\")\n        self.assertEqual(self.fs.read(\"/logs/app.log\"), \"hello world\")\n\n    def test_ls_on_file(self):\n        self.fs.write(\"/x/readme.md\", \"#\")\n        self.assertEqual(self.fs.ls(\"/x/readme.md\"), [\"readme.md\"])\n\n    def test_read_errors(self):\n        self.fs.mkdir(\"/d\")\n        with self.assertRaises(FileNotFoundError):\n            self.fs.read(\"/nope.txt\")\n        with self.assertRaises(IsADirectoryError):\n            self.fs.read(\"/d\")\n\n    def test_rm_recursive(self):\n        self.fs.write(\"/a/b/f.txt\", \"123\")\n        self.fs.rm(\"/a/b\")\n        self.assertEqual(self.fs.ls(\"/a\"), [])\n        with self.assertRaises(FileNotFoundError):\n            self.fs.rm(\"/a/b\")\n\n    def test_du(self):\n        self.fs.write(\"/p/one.txt\", \"12345\")\n        self.fs.write(\"/p/q/two.txt\", \"abc\")\n        self.assertEqual((self.fs.du(\"/p\"), self.fs.du(\"/p/q\"), self.fs.du(\"/\")), (8, 3, 8))\n"
+  },
+  "fixes": {
+   "fs/memfs.py": "class Node:\n    def __init__(self, is_file=False):\n        self.children = {}\n        self.is_file = is_file\n        self.content = \"\"\n\n\nclass FileSystem:\n    \"\"\"In-memory file system with absolute paths (\"/a/b/c\").\n\n    mkdir(path)                 create directory and any missing parents\n    write(path, content)        create the file (and parents) or APPEND to it\n    read(path) -> str           FileNotFoundError if missing; IsADirectoryError for directories\n    ls(path) -> list[str]       directory: sorted child names; file: [file name]\n    rm(path)                    remove a file or a directory recursively; FileNotFoundError if missing\n    du(path) -> int             total characters in all files under path\n    \"\"\"\n\n    def __init__(self):\n        self.root = Node()\n\n    @staticmethod\n    def _parts(path):\n        return [p for p in path.split(\"/\") if p]\n\n    def _walk(self, path, create=False):\n        node = self.root\n        for name in self._parts(path):\n            if name not in node.children:\n                if not create:\n                    raise FileNotFoundError(path)\n                node.children[name] = Node()\n            node = node.children[name]\n        return node\n\n    def mkdir(self, path):\n        self._walk(path, create=True)\n\n    def write(self, path, content):\n        parts = self._parts(path)\n        parent = self._walk(\"/\".join(parts[:-1]), create=True)\n        node = parent.children.setdefault(parts[-1], Node(is_file=True))\n        if not node.is_file:\n            raise IsADirectoryError(path)\n        node.content += content\n\n    def read(self, path):\n        node = self._walk(path)\n        if not node.is_file:\n            raise IsADirectoryError(path)\n        return node.content\n\n    def ls(self, path):\n        node = self._walk(path)\n        if node.is_file:\n            return [self._parts(path)[-1]]\n        return sorted(node.children)\n\n    def rm(self, path):\n        parts = self._parts(path)\n        parent = self._walk(\"/\".join(parts[:-1]))\n        if not parts or parts[-1] not in parent.children:\n            raise FileNotFoundError(path)\n        del parent.children[parts[-1]]\n\n    def du(self, path):\n        def size(n):\n            return len(n.content) if n.is_file else sum(size(c) for c in n.children.values())\n\n        return size(self._walk(path))\n"
+  },
+  "bugs": [
+   {
+    "file": "fs/memfs.py",
+    "title": "Node model",
+    "explain": "A small `Node` class with `children`, `is_file`, `content`. The root is a directory node."
+   },
+   {
+    "file": "fs/memfs.py",
+    "title": "One _walk helper",
+    "explain": "Split the path, filter empty parts, step through `children`, optionally creating missing nodes."
+   },
+   {
+    "file": "fs/memfs.py",
+    "title": "Operations",
+    "explain": "write = walk(parent, create) + setdefault file + append; rm = delete from the parent's children; du = recursive sum."
+   }
+  ],
+  "hints": [
+   "'/a/b'.split('/') gives ['', 'a', 'b']. Filter the empties.",
+   "Recursion makes rm -r free: dropping a node drops its subtree."
+  ],
+  "concepts": [
+   "tries",
+   "recursion",
+   "path parsing",
+   "error semantics"
+  ]
  }
 ]

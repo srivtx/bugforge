@@ -37,7 +37,25 @@ function plain(v) {
   return v === undefined ? undefined : JSON.parse(JSON.stringify(v));
 }
 
+// JSON-like normalisation that keeps asymmetric matchers (expect.any(...))
+function norm(v) {
+  if (v && typeof v.asymmetricMatch === "function") return v;
+  if (v === undefined || typeof v === "function") return undefined;
+  if (v === null || typeof v !== "object") return v;
+  if (v.__oid) return String(v);
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v.toJSON === "function" && !Array.isArray(v)) return norm(v.toJSON());
+  if (Array.isArray(v)) return v.map((x) => (x === undefined ? null : norm(x)));
+  const o = {};
+  for (const k of Object.keys(v)) {
+    const n = norm(v[k]);
+    if (n !== undefined) o[k] = n;
+  }
+  return o;
+}
+
 function deepEqual(a, b) {
+  if (b && typeof b.asymmetricMatch === "function") return b.asymmetricMatch(a);
   if (a === b) return true;
   if (a && b && a.__oid && b.__oid) return String(a) === String(b);
   if (typeof a !== typeof b || a === null || b === null || typeof a !== "object") {
@@ -51,6 +69,7 @@ function deepEqual(a, b) {
 }
 
 function matchObject(actual, expected) {
+  if (expected && typeof expected.asymmetricMatch === "function") return expected.asymmetricMatch(actual);
   if (expected === null || typeof expected !== "object") return deepEqual(actual, expected);
   if (actual === null || typeof actual !== "object") return false;
   if (Array.isArray(expected)) {
@@ -1431,7 +1450,7 @@ function createJest() {
       const n = (neg) => (neg ? "not." : "");
       const m = {
         toBe: (exp) => check(Object.is(received, exp), (neg) => `expect(received).${n(neg)}toBe(expected)\n\nExpected: ${neg ? "not " : ""}${pretty(exp)}\nReceived: ${pretty(received)}`),
-        toEqual: (exp) => check(deepEqual(plain(received), plain(exp)), (neg) => `expect(received).${n(neg)}toEqual(expected)\n\nExpected: ${neg ? "not " : ""}${pretty(exp)}\nReceived: ${pretty(received)}`),
+        toEqual: (exp) => check(deepEqual(norm(received), norm(exp)), (neg) => `expect(received).${n(neg)}toEqual(expected)\n\nExpected: ${neg ? "not " : ""}${pretty(exp)}\nReceived: ${pretty(received)}`),
         toStrictEqual: (exp) => m.toEqual(exp),
         toBeNull: () => check(received === null, (neg) => `expect(received).${n(neg)}toBeNull()\n\nReceived: ${pretty(received)}`),
         toBeUndefined: () => check(received === undefined, (neg) => `expect(received).${n(neg)}toBeUndefined()\n\nReceived: ${pretty(received)}`),
@@ -1455,7 +1474,7 @@ function createJest() {
           const ok = r.found && (v.length === 0 || deepEqual(plain(r.value), plain(v[0])));
           check(ok, (neg) => `expect(received).${n(neg)}toHaveProperty(${pretty(path)}${v.length ? ", " + pretty(v[0]) : ""})\n\nReceived: ${pretty(received)}`);
         },
-        toMatchObject: (exp) => check(matchObject(plain(received), plain(exp)), (neg) => `expect(received).${n(neg)}toMatchObject(expected)\n\nExpected: ${pretty(exp)}\nReceived: ${pretty(received)}`),
+        toMatchObject: (exp) => check(matchObject(norm(received), norm(exp)), (neg) => `expect(received).${n(neg)}toMatchObject(expected)\n\nExpected: ${pretty(exp)}\nReceived: ${pretty(received)}`),
         toMatch: (re) => check(typeof received === "string" && (re instanceof RegExp ? re.test(received) : received.includes(re)), (neg) => `expect(received).${n(neg)}toMatch(${String(re)})\n\nReceived: ${pretty(received)}`),
         toBeInstanceOf: (C) => check(received instanceof C, (neg) => `expect(received).${n(neg)}toBeInstanceOf(${C.name})`),
         toThrow: (exp) => {
@@ -1507,7 +1526,11 @@ function createJest() {
     Object.defineProperty(api, "rejects", { get: () => asyncWrap("rejects") });
     return api;
   }
-  expect.any = (C) => ({ asymmetricMatch: (v) => v != null && (v.constructor === C || v instanceof C) });
+  expect.any = (C) => ({ asymmetricMatch: (v) => v != null && (v.constructor === C || v instanceof C), toJSON: () => `Any<${C.name}>` });
+  expect.anything = () => ({ asymmetricMatch: (v) => v !== null && v !== undefined, toJSON: () => "Anything" });
+  expect.stringContaining = (s) => ({ asymmetricMatch: (v) => typeof v === "string" && v.includes(s), toJSON: () => `StringContaining(${s})` });
+  expect.objectContaining = (o) => ({ asymmetricMatch: (v) => matchObject(norm(v), norm(o)), toJSON: () => "ObjectContaining" });
+  expect.arrayContaining = (arr) => ({ asymmetricMatch: (v) => Array.isArray(v) && arr.every((x) => v.some((y) => deepEqual(norm(y), norm(x)))), toJSON: () => "ArrayContaining" });
 
   async function runSuite(s, path, results, file) {
     const fullName = (t) => [...path, s.name, t].filter(Boolean).join(" › ");
