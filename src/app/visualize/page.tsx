@@ -7,7 +7,7 @@ export default function VisualizePage() {
   return (
     <div className="bg-grid">
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <SectionTitle
+        <SectionTitle art="lab3d"
           eyebrow="3D Lab"
           color="var(--cyan)"
           title={

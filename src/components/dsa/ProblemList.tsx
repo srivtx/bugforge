@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { CheckCircle2, CircleDot, Search, Boxes } from "lucide-react";
 import type { Difficulty } from "@/lib/types";
-import { DifficultyBadge } from "@/components/ui";
+import { DifficultyBadge, VoxelMeter } from "@/components/ui";
 import { useProgress } from "@/lib/progress";
 
 type Slim = { slug: string; title: string; difficulty: Difficulty; patterns: string[]; group: string; freq: number; testCount: number; viz: boolean };
@@ -69,7 +69,7 @@ export function ProblemList({ problems }: { problems: Slim[] }) {
                   const st = progress.problems[p.slug]?.status;
                   return (
                     <motion.div key={p.slug} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }}>
-                      <Link href={`/dsa/${p.slug}`} className="vx vx-hover group flex h-full flex-col p-4">
+                      <Link href={`/dsa/${p.slug}`} className="clay vx-hover group flex h-full flex-col p-4">
                         <div className="mb-2 flex items-center gap-2">
                           <DifficultyBadge d={p.difficulty} />
                           {p.viz && (
@@ -77,7 +77,7 @@ export function ProblemList({ problems }: { problems: Slim[] }) {
                               <Boxes className="h-3.5 w-3.5" /> viz
                             </span>
                           )}
-                          <span className="ml-auto">{st === "solved" ? <CheckCircle2 className="h-5 w-5 text-mint" /> : st === "attempted" ? <CircleDot className="h-5 w-5 text-amber" /> : null}</span>
+                          <span className="ml-auto flex items-center gap-2"><VoxelMeter d={p.difficulty} />{st === "solved" ? <CheckCircle2 className="h-5 w-5 text-mint" /> : st === "attempted" ? <CircleDot className="h-5 w-5 text-amber" /> : null}</span>
                         </div>
                         <h3 className="font-semibold leading-snug group-hover:text-violet">{p.title}</h3>
                         <div className="mt-2 flex flex-wrap gap-1.5">

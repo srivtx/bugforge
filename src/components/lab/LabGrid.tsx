@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { CheckCircle2, Clock, CircleDot, Search } from "lucide-react";
 import type { Slim } from "@/lib/slim";
-import { DifficultyBadge, Pill } from "@/components/ui";
+import { DifficultyBadge, Pill, VoxelMeter } from "@/components/ui";
 import { useProgress } from "@/lib/progress";
 
 
@@ -44,12 +44,13 @@ export function LabGrid({ labs }: { labs: Slim[] }) {
           const st = progress.labs[l.slug]?.status;
           return (
             <motion.div key={l.slug} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * 0.03 }}>
-              <Link href={`/lab/${l.slug}`} className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-panel/70 p-5 transition hover:-translate-y-0.5 hover:border-line-2 hover:bg-panel">
-                <div className={clsx("absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 transition group-hover:opacity-100", l.kind === "build" ? "via-cyan" : "via-orange")} />
+              <Link href={`/lab/${l.slug}`} className="clay vx-hover group flex h-full flex-col overflow-hidden p-5">
+                <div className={clsx("absolute inset-x-5 top-0 h-1 rounded-b-full opacity-60 transition group-hover:opacity-100", l.kind === "build" ? "bg-cyan" : l.lang === "py" ? "bg-violet" : "bg-orange")} />
                 <div className="mb-3 flex items-center gap-2">
                   <DifficultyBadge d={l.difficulty} />
                   <Pill tone={l.lang === "py" ? "cyan" : "orange"}>{l.lang === "py" ? "Python" : "Node.js"}</Pill>
-                  <span className="ml-auto">
+                  <span className="ml-auto flex items-center gap-2">
+                    <VoxelMeter d={l.difficulty} />
                     {st === "solved" ? <CheckCircle2 className="h-5 w-5 text-mint" /> : st === "attempted" ? <CircleDot className="h-5 w-5 text-amber" /> : null}
                   </span>
                 </div>

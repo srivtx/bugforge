@@ -8,7 +8,7 @@ Everything runs client-side (Web Workers + Pyodide), so it deploys as a static s
 
 | Mode | What you do |
 |---|---|
-| **Debug labs** (21) | Multi-file Node/Express/Mongoose or Python services with a bug ticket and a red test suite. Fix the root causes until every test is green. A *Request flow* view (2D and 3D) shows each request travelling through middleware → handler → database. |
+| **Debug labs** (23) | Multi-file Node/Express/Mongoose or Python services with a bug ticket and a red test suite. Fix the root causes until every test is green. A *Request flow* view (2D and 3D) shows each request travelling through middleware → handler → database. |
 | **Build labs** (9) | The opposite: tests describe a component that doesn't exist yet (rate limiter, job queue, LRU, JWT auth, KV store with transactions…). Implement it. |
 | **Bug Hunt ∞** | Endless generated bugs: a mutation engine injects 1–3 real bugs into working labs, verified to break the tests. Find them against the clock. |
 | **Spot the Bug** (65) | Fast drills in JS, Python, Java and C++: click the buggy line, pick the diagnosis, read the fix. |

@@ -9,7 +9,7 @@ export default function BuildPage() {
   return (
     <div className="bg-grid">
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <SectionTitle
+        <SectionTitle art="build"
           eyebrow="Implementation"
           title={
             <>

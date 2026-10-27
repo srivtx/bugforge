@@ -1,9 +1,9 @@
 "use client";
 // 3D voxel world for one HTTP request: the request cube travels across middleware/handler pillars,
 // dips into collection towers (one voxel per document, matched documents glow) and lands on a status block.
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html, OrbitControls, RoundedBox } from "@react-three/drei";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { Trace, TraceStep } from "@/lib/types";
 import { useTheme } from "@/lib/theme";
@@ -238,17 +238,38 @@ function World({ trace, playKey, speed }: { trace: Trace; playKey: number; speed
   );
 }
 
+const TARGET = new THREE.Vector3(0, 0.8, -1.2);
+const VIEW_DIR = new THREE.Vector3(0, 0.62, 0.92).normalize();
+
+// Frames the whole board for the container's aspect ratio (re-fits on resize, leaves user orbiting alone otherwise).
+function FitCamera({ width }: { width: number }) {
+  const { camera, size } = useThree();
+  useEffect(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+    const vHalf = THREE.MathUtils.degToRad(cam.fov / 2);
+    const hHalf = Math.atan(Math.tan(vHalf) * (size.width / size.height));
+    const fitW = (width / 2) / Math.tan(hHalf);
+    const fitH = 6 / Math.tan(vHalf);
+    const dist = Math.max(fitW, fitH) * 1.08;
+    cam.position.copy(VIEW_DIR).multiplyScalar(dist).add(TARGET);
+    cam.lookAt(TARGET);
+    cam.updateProjectionMatrix();
+  }, [camera, size.width, size.height, width]);
+  return null;
+}
+
 export function Flow3D({ trace, playKey, speed = 1.1 }: { trace: Trace; playKey: number; speed?: number }) {
   const theme = useTheme();
   const n = trace.steps.length + 2;
   const dist = Math.max(18, n * 3.1);
   return (
     <Canvas shadows camera={{ position: [0, dist * 0.62, dist * 0.92], fov: 38 }} dpr={[1, 2]} gl={{ alpha: true, antialias: true }}>
-      <hemisphereLight args={["#ffffff", theme === "dark" ? "#20243c" : "#b9ab95", theme === "dark" ? 0.8 : 1.1]} />
+      <FitCamera width={(n - 1) * SPACING + 5} />
+      <hemisphereLight args={["#ffffff", theme === "dark" ? "#2a2622" : "#b9ab95", theme === "dark" ? 0.8 : 1.1]} />
       <directionalLight position={[6, 14, 8]} intensity={1.5} castShadow />
       <directionalLight position={[-8, 6, -6]} intensity={0.4} color="#9f8cff" />
       <World trace={trace} playKey={playKey} speed={speed} />
-      <OrbitControls makeDefault enablePan={false} minDistance={6} maxDistance={60} maxPolarAngle={Math.PI / 2.15} target={[0, 0.8, -1.2]} />
+      <OrbitControls makeDefault enablePan={false} minDistance={6} maxDistance={80} maxPolarAngle={Math.PI / 2.15} target={[0, 0.8, -1.2]} />
     </Canvas>
   );
 }

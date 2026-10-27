@@ -19,6 +19,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${display.variable} ${code.variable} min-h-screen antialiased`}>
+        <div className="backdrop" aria-hidden>
+          <i />
+          <i />
+          <i />
+        </div>
         <Nav />
         <main>{children}</main>
       </body>

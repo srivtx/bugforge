@@ -8,7 +8,7 @@ export default function DrillsPage() {
   return (
     <div className="bg-grid min-h-[calc(100dvh-3.5rem)]">
       <div className="mx-auto max-w-6xl px-4 py-12">
-        <SectionTitle
+        <SectionTitle art="drills"
           eyebrow="Rapid fire"
           color="var(--amber)"
           title={

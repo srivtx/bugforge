@@ -9,7 +9,7 @@ export default function DsaPage() {
   return (
     <div className="bg-grid">
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <SectionTitle
+        <SectionTitle art="dsa"
           eyebrow="Algorithms"
           color="var(--violet)"
           title={

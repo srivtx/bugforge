@@ -141,7 +141,7 @@ export function VisualizeLab() {
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-          <div className="vx relative h-[440px] overflow-hidden">
+          <div className="vx relative h-[360px] overflow-hidden sm:h-[480px]">
             <Flow3D key={sc.id + playKey} trace={sc.trace} playKey={playKey} />
             <div className="absolute bottom-3 left-3">
               <Button variant="primary" onClick={() => setPlayKey((k) => k + 1)}>
@@ -149,7 +149,7 @@ export function VisualizeLab() {
               </Button>
             </div>
           </div>
-          <div className="vx max-h-[440px] overflow-y-auto p-4 scroll-thin">
+          <div className="vx max-h-[480px] overflow-y-auto p-4 scroll-thin">
             <div className="mb-3 font-mono text-xs text-dim">
               {sc.trace.method} {sc.trace.url} → <span className={clsx("font-bold", typeof sc.trace.status === "number" && sc.trace.status < 300 ? "text-mint" : "text-rose")}>{sc.trace.status}</span>
             </div>

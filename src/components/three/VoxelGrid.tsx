@@ -33,17 +33,17 @@ export function VoxelGrid({ cells, dist, wave, islands }: { cells: (number | str
   const span = Math.max(R, C);
   return (
     <Canvas camera={{ position: [span * 0.35, span * 0.75, span * 0.85], fov: 42 }} dpr={[1, 2]} gl={{ alpha: true, antialias: true }}>
-      <hemisphereLight args={["#ffffff", dark ? "#1c2038" : "#b9ab95", 1.1]} />
+      <hemisphereLight args={["#ffffff", dark ? "#26231f" : "#b9ab95", 1.1]} />
       <directionalLight position={[5, 12, 6]} intensity={1.5} />
       <group position={[-(C - 1) / 2, 0, -(R - 1) / 2]}>
         {cells.map((row, r) =>
           row.map((v, c) => {
             const d = dist[r][c];
             let h = 0.2;
-            let color = dark ? "#2a2f4c" : "#e6dfd2";
+            let color = dark ? "#33302c" : "#e6dfd2";
             if (v === "#") {
               h = 1.5;
-              color = dark ? "#454b70" : "#8d8577";
+              color = dark ? "#5a554d" : "#8d8577";
             } else if (v === "0") {
               h = 0.12;
               color = dark ? "#1b3550" : "#bfe3ef";

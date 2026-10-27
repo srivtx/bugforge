@@ -28,22 +28,23 @@
   --rose: #ea3a6a;
   --code-bg: #fffdf8;
   --cube-stroke: rgba(120, 100, 70, 0.10);
+  --hi: rgba(255, 255, 255, 0.75);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0d0e18;
-    --bg-2: #121426;
-    --panel: #171a2e;
-    --panel-2: #1e2238;
-    --line: #2a2f4c;
-    --line-2: #363c5e;
-    --edge: #07080f;
+    --bg: #121110;
+    --bg-2: #181715;
+    --panel: #1e1d1b;
+    --panel-2: #262422;
+    --line: #32302c;
+    --line-2: #403d38;
+    --edge: #080707;
     --shadow: rgba(0, 0, 0, 0.55);
-    --text: #eef0fa;
-    --muted: #a3a7c4;
-    --dim: #6f7494;
+    --text: #f3f0ea;
+    --muted: #aca69c;
+    --dim: #7a756c;
     --orange: #ff9a3c;
     --orange-edge: #b35a10;
     --amber: #ffc857;
@@ -53,23 +54,24 @@
     --mint: #3ee6a8;
     --mint-edge: #179467;
     --rose: #ff5c8a;
-    --code-bg: #10121f;
-    --cube-stroke: rgba(150, 160, 230, 0.07);
+    --code-bg: #171614;
+    --cube-stroke: rgba(230, 220, 200, 0.06);
+    --hi: rgba(255, 255, 255, 0.06);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0d0e18;
-  --bg-2: #121426;
-  --panel: #171a2e;
-  --panel-2: #1e2238;
-  --line: #2a2f4c;
-  --line-2: #363c5e;
-  --edge: #07080f;
+  --bg: #121110;
+  --bg-2: #181715;
+  --panel: #1e1d1b;
+  --panel-2: #262422;
+  --line: #32302c;
+  --line-2: #403d38;
+  --edge: #080707;
   --shadow: rgba(0, 0, 0, 0.55);
-  --text: #eef0fa;
-  --muted: #a3a7c4;
-  --dim: #6f7494;
+  --text: #f3f0ea;
+  --muted: #aca69c;
+  --dim: #7a756c;
   --orange: #ff9a3c;
   --orange-edge: #b35a10;
   --amber: #ffc857;
@@ -79,8 +81,9 @@
   --mint: #3ee6a8;
   --mint-edge: #179467;
   --rose: #ff5c8a;
-  --code-bg: #10121f;
-  --cube-stroke: rgba(150, 160, 230, 0.07);
+  --code-bg: #171614;
+  --cube-stroke: rgba(230, 220, 200, 0.06);
+  --hi: rgba(255, 255, 255, 0.06);
   color-scheme: dark;
 }
 
@@ -120,23 +123,20 @@ body {
 
 /* ---------------------------------------------------------------- voxel / clay utilities */
 
-/* clean page background with soft color glows (no repeating pattern) */
+/* page sections sit on the fixed .backdrop (see layout) */
 .bg-grid,
 .bg-cubes {
-  background-color: var(--bg);
-  background-image:
-    radial-gradient(900px 520px at 85% -10%, color-mix(in oklab, var(--orange) 10%, transparent), transparent 70%),
-    radial-gradient(800px 600px at -10% 20%, color-mix(in oklab, var(--violet) 8%, transparent), transparent 70%),
-    radial-gradient(700px 500px at 60% 110%, color-mix(in oklab, var(--cyan) 7%, transparent), transparent 70%);
-  background-attachment: fixed;
+  background: transparent;
 }
 
 /* extruded clay block */
-.vx {
+.vx,
+.clay {
+  position: relative;
   background: var(--panel);
   border: 2px solid var(--line);
   border-radius: 18px;
-  box-shadow: 0 5px 0 var(--edge), 0 18px 30px -18px var(--shadow);
+  box-shadow: inset 0 2px 0 var(--hi), 0 5px 0 var(--edge), 0 18px 30px -18px var(--shadow);
 }
 .vx-sm {
   background: var(--panel);
@@ -149,7 +149,7 @@ body {
 }
 .vx-hover:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 0 var(--edge), 0 24px 34px -18px var(--shadow);
+  box-shadow: inset 0 2px 0 var(--hi), 0 8px 0 var(--edge), 0 24px 34px -18px var(--shadow);
   border-color: var(--line-2);
 }
 .vx-hover:active {
@@ -233,3 +233,42 @@ body {
 .bf-line-hl { background: color-mix(in oklab, var(--rose) 18%, transparent); }
 .bf-line-ok { background: color-mix(in oklab, var(--mint) 16%, transparent); }
 .bf-glyph { background: var(--rose); border-radius: 50%; margin-left: 6px; width: 8px !important; height: 8px !important; margin-top: 6px; }
+
+/* ---------------------------------------------------------------- iso voxel art */
+@keyframes iso-drop {
+  from { transform: translateY(-40px); opacity: 0; }
+  60% { opacity: 1; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.iso-drop { animation: iso-drop 0.55s cubic-bezier(.3,1.5,.5,1) both; }
+@keyframes iso-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.iso-float { animation: iso-float 5s ease-in-out infinite; }
+.iso-shadow { opacity: 0.35; filter: blur(4px); }
+
+/* ---------------------------------------------------------------- page backdrop: drifting glows + grain */
+.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
+.backdrop > i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; will-change: transform; }
+.backdrop > i:nth-child(1) { width: 46vw; height: 46vw; top: -18vw; right: -10vw; background: color-mix(in oklab, var(--orange) 28%, transparent); animation: drift-a 26s ease-in-out infinite; }
+.backdrop > i:nth-child(2) { width: 40vw; height: 40vw; top: 25vh; left: -16vw; background: color-mix(in oklab, var(--violet) 24%, transparent); animation: drift-b 32s ease-in-out infinite; }
+.backdrop > i:nth-child(3) { width: 36vw; height: 36vw; bottom: -16vw; right: 18vw; background: color-mix(in oklab, var(--cyan) 20%, transparent); animation: drift-c 38s ease-in-out infinite; }
+.backdrop::after {
+  content: ""; position: absolute; inset: 0; opacity: 0.07; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@keyframes drift-a { 50% { transform: translate(-8vw, 10vh) scale(1.1); } }
+@keyframes drift-b { 50% { transform: translate(10vw, -6vh) scale(0.92); } }
+@keyframes drift-c { 50% { transform: translate(-12vw, -8vh) scale(1.08); } }
+
+[data-theme="dark"] .backdrop > i:nth-child(2) { background: color-mix(in oklab, var(--rose) 14%, transparent); }
+[data-theme="dark"] .backdrop > i:nth-child(3) { background: color-mix(in oklab, var(--amber) 10%, transparent); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .backdrop > i:nth-child(2) { background: color-mix(in oklab, var(--rose) 14%, transparent); }
+  :root:not([data-theme="light"]) .backdrop > i:nth-child(3) { background: color-mix(in oklab, var(--amber) 10%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iso-drop, .iso-float, .backdrop > i, .animate-float { animation: none !important; }
+}

@@ -1,9 +1,23 @@
 import clsx from "clsx";
 import type { Difficulty } from "@/lib/types";
+import { IsoVoxels, type IsoModel } from "@/components/IsoVoxels";
 
 export function DifficultyBadge({ d, className }: { d: Difficulty; className?: string }) {
   const c = d === "Easy" ? "text-mint bg-mint/12 border-mint/30" : d === "Medium" ? "text-amber bg-amber/12 border-amber/35" : "text-rose bg-rose/12 border-rose/30";
   return <span className={clsx("inline-flex items-center rounded-lg border-2 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wider", c, className)}>{d}</span>;
+}
+
+// three stacked mini cubes: how hard this is at a glance
+export function VoxelMeter({ d, className }: { d: Difficulty; className?: string }) {
+  const n = d === "Easy" ? 1 : d === "Medium" ? 2 : 3;
+  const c = d === "Easy" ? "var(--mint)" : d === "Medium" ? "var(--amber)" : "var(--rose)";
+  return (
+    <span title={d} className={clsx("inline-flex items-end gap-[3px]", className)}>
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="cube" style={{ width: 10, height: 6 + i * 4, borderRadius: 2, background: i < n ? c : "var(--line)" }} />
+      ))}
+    </span>
+  );
 }
 
 export function Pill({ children, className, tone = "default" }: { children: React.ReactNode; className?: string; tone?: "default" | "orange" | "violet" | "cyan" | "mint" | "rose" | "amber" }) {
@@ -48,17 +62,20 @@ export function Button({
   );
 }
 
-export function SectionTitle({ eyebrow, title, sub, color = "var(--orange)" }: { eyebrow?: string; title: React.ReactNode; sub?: React.ReactNode; color?: string }) {
+export function SectionTitle({ eyebrow, title, sub, color = "var(--orange)", art }: { eyebrow?: string; title: React.ReactNode; sub?: React.ReactNode; color?: string; art?: IsoModel }) {
   return (
-    <div className="mb-8">
-      {eyebrow && (
-        <div className="mb-3 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color }}>
-          <span className="cube" style={{ background: color }} />
-          {eyebrow}
-        </div>
-      )}
-      <h1 className="text-3xl font-bold tracking-tight md:text-[2.6rem] md:leading-[1.1]">{title}</h1>
-      {sub && <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">{sub}</p>}
+    <div className="mb-8 flex items-center gap-8">
+      <div className="min-w-0 flex-1">
+        {eyebrow && (
+          <div className="mb-3 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color }}>
+            <span className="cube" style={{ background: color }} />
+            {eyebrow}
+          </div>
+        )}
+        <h1 className="text-3xl font-bold tracking-tight md:text-[2.6rem] md:leading-[1.1]">{title}</h1>
+        {sub && <p className="mt-3 max-w-2xl text-[15.5px] leading-relaxed text-muted">{sub}</p>}
+      </div>
+      {art && <IsoVoxels model={art} className="hidden h-44 w-auto shrink-0 md:block lg:mr-6 lg:h-52" />}
     </div>
   );
 }

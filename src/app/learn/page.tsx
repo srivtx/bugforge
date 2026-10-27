@@ -9,7 +9,7 @@ export default function LearnPage() {
   return (
     <div className="bg-grid">
       <div className="mx-auto max-w-7xl px-4 py-12">
-        <SectionTitle
+        <SectionTitle art="learn"
           eyebrow="Learn"
           color="var(--mint)"
           title={

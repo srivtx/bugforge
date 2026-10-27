@@ -914,6 +914,126 @@
  },
  {
   "kind": "debug",
+  "lang": "js",
+  "slug": "webhook-receiver",
+  "order": 18,
+  "title": "Payment Webhook Receiver",
+  "difficulty": "Hard",
+  "minutes": 30,
+  "tagline": "Every webhook is rejected, forged ones get through, and paid orders show as refunded.",
+  "ticket": "**PAY-310 · Payment provider is disabling our webhook endpoint**\n\nThe provider's dashboard shows **100% failures** for `POST /webhooks/payments` and threatens to disable it. Their docs:\n\n- Each delivery has `x-signature: t=<unix seconds>,v1=<digest>` (see `lib/signature.js`). Reject a bad digest or a timestamp more than **5 minutes** away with **401**.\n- Respond **2xx** to every authentic event, **including types you don't handle**. Anything else is retried with backoff for 3 days.\n\nSecurity also found that a request with a garbage signature **still updated an order**. And on the rare day something got through, paid orders showed as **refunded**.\n\nThe webhook secret is `process.env.WEBHOOK_SECRET`.",
+  "env": {
+   "WEBHOOK_SECRET": "whsec_test"
+  },
+  "files": {
+   "app.js": "import express from 'express';\nimport webhooks from './routes/webhooks.js';\n\nconst app = express();\napp.use(express.json());\napp.use('/webhooks', webhooks);\n\nexport default app;\n",
+   "routes/webhooks.js": "import { Router } from 'express';\nimport Order from '../models/Order.js';\nimport { verifySignature } from '../lib/verify.js';\n\nconst router = Router();\n\nrouter.post('/payments', verifySignature(process.env.WEBHOOK_SECRET), async (req, res) => {\n  const { type, data } = req.body;\n  switch (type) {\n    case 'payment.succeeded':\n      await Order.findByIdAndUpdate(data.orderId, { status: 'paid' });\n    case 'payment.refunded':\n      await Order.findByIdAndUpdate(data.orderId, { status: 'refunded' });\n      break;\n    default:\n      return res.status(400).json({ error: `unhandled event ${type}` });\n  }\n  res.json({ received: true });\n});\n\nexport default router;\n",
+   "lib/verify.js": "import { hash } from './signature.js';\n\nconst TOLERANCE_SECONDS = 300;\n\nexport const verifySignature = (secret) => (req, res, next) => {\n  const header = req.get('x-signature') || '';\n  const parts = Object.fromEntries(header.split(',').map((kv) => kv.split('=')));\n  const t = parts.t;\n  const expected = hash(secret + '.' + t + '.' + JSON.stringify(req.body));\n\n  if (Math.abs(Date.now() - t) > TOLERANCE_SECONDS) {\n    return res.status(401).json({ error: 'stale' });\n  }\n  if (parts.v1 !== expected) {\n    res.status(401).json({ error: 'bad signature' });\n  }\n  next();\n};\n",
+   "lib/signature.js": "// Signature scheme used by the payment provider:\n//   header  x-signature: t=<unix seconds>,v1=<digest>\n//   digest  = hash(secret + '.' + t + '.' + rawBody)\nexport const hash = (s) => {\n  let h = 5381;\n  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;\n  return h.toString(16);\n};\n\nexport const sign = (secret, t, body) => `t=${t},v1=${hash(secret + '.' + t + '.' + body)}`;\n",
+   "models/Order.js": "import mongoose from 'mongoose';\n\nconst orderSchema = new mongoose.Schema({\n  total: Number,\n  status: { type: String, default: 'pending' },\n});\n\nexport default mongoose.model('Order', orderSchema);\n"
+  },
+  "tests": {
+   "tests/webhooks.test.js": "import request from 'supertest';\nimport app from '../app.js';\nimport Order from '../models/Order.js';\nimport { sign } from '../lib/signature.js';\n\nconst SECRET = 'whsec_test';\nconst now = () => Math.floor(Date.now() / 1000);\n\nconst deliver = (event, { t = now(), secret = SECRET } = {}) =>\n  request(app)\n    .post('/webhooks/payments')\n    .set('x-signature', sign(secret, t, JSON.stringify(event)))\n    .send(event);\n\nlet order;\nbeforeEach(async () => {\n  await Order.deleteMany({});\n  order = await Order.create({ total: 4200 });\n});\n\ntest('a valid payment.succeeded marks the order paid', async () => {\n  const res = await deliver({ type: 'payment.succeeded', data: { orderId: order.id } });\n  expect(res.status).toBe(200);\n  expect((await Order.findById(order.id)).status).toBe('paid');\n});\n\ntest('payment.refunded marks the order refunded', async () => {\n  await deliver({ type: 'payment.refunded', data: { orderId: order.id } });\n  expect((await Order.findById(order.id)).status).toBe('refunded');\n});\n\ntest('a forged signature is rejected and changes nothing', async () => {\n  const res = await deliver({ type: 'payment.succeeded', data: { orderId: order.id } }, { secret: 'guess' });\n  expect(res.status).toBe(401);\n  expect((await Order.findById(order.id)).status).toBe('pending');\n});\n\ntest('a replayed event older than 5 minutes is rejected', async () => {\n  const res = await deliver({ type: 'payment.succeeded', data: { orderId: order.id } }, { t: now() - 600 });\n  expect(res.status).toBe(401);\n});\n\ntest('unknown event types are acknowledged with 200', async () => {\n  const res = await deliver({ type: 'customer.updated', data: {} });\n  expect(res.status).toBe(200);\n});\n"
+  },
+  "fixes": {
+   "lib/verify.js": "import { hash } from './signature.js';\n\nconst TOLERANCE_SECONDS = 300;\n\nexport const verifySignature = (secret) => (req, res, next) => {\n  const header = req.get('x-signature') || '';\n  const parts = Object.fromEntries(header.split(',').map((kv) => kv.split('=')));\n  const t = Number(parts.t);\n  const expected = hash(secret + '.' + t + '.' + JSON.stringify(req.body));\n\n  if (!t || Math.abs(Date.now() / 1000 - t) > TOLERANCE_SECONDS) {\n    return res.status(401).json({ error: 'stale' });\n  }\n  if (parts.v1 !== expected) {\n    return res.status(401).json({ error: 'bad signature' });\n  }\n  next();\n};\n",
+   "routes/webhooks.js": "import { Router } from 'express';\nimport Order from '../models/Order.js';\nimport { verifySignature } from '../lib/verify.js';\n\nconst router = Router();\n\nrouter.post('/payments', verifySignature(process.env.WEBHOOK_SECRET), async (req, res) => {\n  const { type, data } = req.body;\n  switch (type) {\n    case 'payment.succeeded':\n      await Order.findByIdAndUpdate(data.orderId, { status: 'paid' });\n      break;\n    case 'payment.refunded':\n      await Order.findByIdAndUpdate(data.orderId, { status: 'refunded' });\n      break;\n    default:\n      // Acknowledge events we don't care about, or the provider retries them forever.\n      return res.json({ received: true, ignored: true });\n  }\n  res.json({ received: true });\n});\n\nexport default router;\n"
+  },
+  "bugs": [
+   {
+    "file": "lib/verify.js",
+    "title": "milliseconds vs seconds",
+    "explain": "`Date.now()` is in **milliseconds**; the header's `t` is in **seconds**. The difference is always about 1.7 trillion, so every event looked stale. Compare `Date.now() / 1000` with `Number(t)`."
+   },
+   {
+    "file": "lib/verify.js",
+    "title": "missing return after 401",
+    "explain": "Without `return`, the middleware sends 401 **and then calls `next()`**, so the handler still runs and updates the order. In real Express this also triggers \"headers already sent\"."
+   },
+   {
+    "file": "routes/webhooks.js",
+    "title": "switch fall-through",
+    "explain": "`case 'payment.succeeded'` has no `break`, so execution falls into the refunded case and overwrites `paid` with `refunded`."
+   },
+   {
+    "file": "routes/webhooks.js",
+    "title": "non-2xx for unknown events",
+    "explain": "Providers retry any non-2xx. Acknowledge events you don't handle with 200, or one new event type fills your logs and gets the endpoint disabled."
+   }
+  ],
+  "hints": [
+   "Log `Date.now()` next to the header's t value.",
+   "After `res.status(401).json(...)`, what runs next?",
+   "Read the switch statement aloud. Where does the first case stop?"
+  ],
+  "concepts": [
+   "webhook signatures",
+   "replay protection",
+   "seconds vs ms",
+   "switch fall-through",
+   "acknowledge unknown events"
+  ]
+ },
+ {
+  "kind": "debug",
+  "lang": "js",
+  "slug": "sales-report",
+  "order": 19,
+  "title": "Monthly Sales Report",
+  "difficulty": "Medium",
+  "minutes": 25,
+  "tagline": "March shows up as February, the last day of the month vanishes, and averages are tiny.",
+  "ticket": "**FIN-88 · Finance doesn't trust the dashboard**\n\nThe sales report (`GET /api/reports/sales?from=…&to=…&by=day|month`) disagrees with the bank statement:\n\n- The March report is labelled **2024-02**.\n- Sales on **the last day** of a range are missing (`to` is meant to be inclusive).\n- **Cancelled** sales are counted as revenue.\n- The average sale per day is far too small on busy reports.\n\nEverything is in UTC. Amounts are integer cents.",
+  "env": {},
+  "files": {
+   "app.js": "import express from 'express';\nimport reports from './routes/reports.js';\n\nconst app = express();\napp.use('/api/reports', reports);\n\nexport default app;\n",
+   "routes/reports.js": "import { Router } from 'express';\nimport Sale from '../models/Sale.js';\nimport { summarize } from '../lib/report.js';\n\nconst router = Router();\n\n// GET /api/reports/sales?from=2024-03-01&to=2024-03-31&by=day\n// \"to\" is inclusive: the whole of that day is part of the report.\nrouter.get('/sales', async (req, res) => {\n  const { from, to, by = 'day' } = req.query;\n  const sales = await Sale.find({\n    createdAt: { $gte: new Date(from), $lte: new Date(to) },\n  });\n  res.json(summarize(sales, by));\n});\n\nexport default router;\n",
+   "lib/report.js": "// Groups sales into UTC calendar buckets. All dates are handled in UTC.\nconst pad = (n) => String(n).padStart(2, '0');\n\nexport const bucketKey = (date, by) => {\n  const y = date.getUTCFullYear();\n  const m = pad(date.getUTCMonth());\n  return by === 'month' ? `${y}-${m}` : `${y}-${m}-${pad(date.getUTCDate())}`;\n};\n\nexport const summarize = (sales, by) => {\n  const buckets = {};\n  for (const s of sales) {\n    const key = bucketKey(s.createdAt, by);\n    buckets[key] = buckets[key] || { totalCents: 0, count: 0 };\n    buckets[key].totalCents += s.amountCents;\n    buckets[key].count += 1;\n  }\n  return Object.keys(buckets)\n    .sort()\n    .map((key) => ({\n      key,\n      totalCents: buckets[key].totalCents,\n      avgCents: Math.round(buckets[key].totalCents / sales.length),\n    }));\n};\n",
+   "models/Sale.js": "import mongoose from 'mongoose';\n\nconst saleSchema = new mongoose.Schema({\n  amountCents: Number,\n  status: { type: String, enum: ['completed', 'cancelled'], default: 'completed' },\n  createdAt: Date,\n});\n\nexport default mongoose.model('Sale', saleSchema);\n"
+  },
+  "tests": {
+   "tests/report.test.js": "import request from 'supertest';\nimport app from '../app.js';\nimport Sale from '../models/Sale.js';\n\nconst at = (iso, amountCents, status = 'completed') => ({ createdAt: new Date(iso), amountCents, status });\n\nbeforeEach(async () => {\n  await Sale.deleteMany({});\n  await Sale.insertMany([\n    at('2024-03-01T09:00:00Z', 1000),\n    at('2024-03-01T17:30:00Z', 3000),\n    at('2024-03-02T08:00:00Z', 500),\n    at('2024-03-02T12:00:00Z', 9900, 'cancelled'),\n    at('2024-03-31T21:15:00Z', 2000),\n    at('2024-04-01T00:00:00Z', 7777),\n  ]);\n});\n\nconst get = (q) => request(app).get('/api/reports/sales?' + q);\n\ntest('daily keys use real month numbers (March = 03)', async () => {\n  const res = await get('from=2024-03-01&to=2024-03-02&by=day');\n  expect(res.body.map((r) => r.key)).toEqual(['2024-03-01', '2024-03-02']);\n});\n\ntest('average is per bucket', async () => {\n  const res = await get('from=2024-03-01&to=2024-03-01&by=day');\n  expect(res.body).toEqual([{ key: '2024-03-01', totalCents: 4000, avgCents: 2000 }]);\n});\n\ntest('cancelled sales are excluded', async () => {\n  const res = await get('from=2024-03-02&to=2024-03-02&by=day');\n  expect(res.body[0].totalCents).toBe(500);\n});\n\ntest('\"to\" includes the whole last day, but not the next one', async () => {\n  const res = await get('from=2024-03-01&to=2024-03-31&by=month');\n  expect(res.body).toEqual([{ key: '2024-03', totalCents: 6500, avgCents: 1625 }]);\n});\n"
+  },
+  "fixes": {
+   "lib/report.js": "// Groups sales into UTC calendar buckets. All dates are handled in UTC.\nconst pad = (n) => String(n).padStart(2, '0');\n\nexport const bucketKey = (date, by) => {\n  const y = date.getUTCFullYear();\n  const m = pad(date.getUTCMonth() + 1);\n  return by === 'month' ? `${y}-${m}` : `${y}-${m}-${pad(date.getUTCDate())}`;\n};\n\nexport const summarize = (sales, by) => {\n  const buckets = {};\n  for (const s of sales) {\n    const key = bucketKey(s.createdAt, by);\n    buckets[key] = buckets[key] || { totalCents: 0, count: 0 };\n    buckets[key].totalCents += s.amountCents;\n    buckets[key].count += 1;\n  }\n  return Object.keys(buckets)\n    .sort()\n    .map((key) => ({\n      key,\n      totalCents: buckets[key].totalCents,\n      avgCents: Math.round(buckets[key].totalCents / buckets[key].count),\n    }));\n};\n",
+   "routes/reports.js": "import { Router } from 'express';\nimport Sale from '../models/Sale.js';\nimport { summarize } from '../lib/report.js';\n\nconst router = Router();\n\n// GET /api/reports/sales?from=2024-03-01&to=2024-03-31&by=day\n// \"to\" is inclusive: the whole of that day is part of the report.\nrouter.get('/sales', async (req, res) => {\n  const { from, to, by = 'day' } = req.query;\n  const end = new Date(to);\n  end.setUTCDate(end.getUTCDate() + 1); // first instant AFTER the inclusive day\n  const sales = await Sale.find({\n    status: 'completed',\n    createdAt: { $gte: new Date(from), $lt: end },\n  });\n  res.json(summarize(sales, by));\n});\n\nexport default router;\n"
+  },
+  "bugs": [
+   {
+    "file": "lib/report.js",
+    "title": "zero-based month",
+    "explain": "`getUTCMonth()` returns 0–11. Add 1 before formatting."
+   },
+   {
+    "file": "lib/report.js",
+    "title": "average divides by the wrong count",
+    "explain": "Each bucket's average must divide by **that bucket's** count, not by the number of sales in the whole report."
+   },
+   {
+    "file": "routes/reports.js",
+    "title": "inclusive end date at midnight",
+    "explain": "`new Date('2024-03-31')` is **00:00** on the 31st, so `$lte` drops everything later that day. Use `$lt` with the start of the **next** day."
+   },
+   {
+    "file": "routes/reports.js",
+    "title": "cancelled sales counted",
+    "explain": "Filter on `status: 'completed'` in the query."
+   }
+  ],
+  "hints": [
+   "What does `new Date(2024, 0, 1).getMonth()` return?",
+   "A date string with no time is which instant?",
+   "Compute the average of one bucket by hand."
+  ],
+  "concepts": [
+   "zero-based months",
+   "inclusive date ranges",
+   "UTC bucketing",
+   "per-group aggregates"
+  ]
+ },
+ {
+  "kind": "debug",
   "lang": "py",
   "slug": "py-bank-ledger",
   "order": 20,
