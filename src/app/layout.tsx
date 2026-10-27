@@ -18,7 +18,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`${display.variable} ${code.variable} min-h-screen antialiased`}>
+      {/* extensions (e.g. ColorZilla) add attributes to <body> before hydration */}
+      <body className={`${display.variable} ${code.variable} min-h-screen antialiased`} suppressHydrationWarning>
         <div className="backdrop" aria-hidden>
           <i />
           <i />
