@@ -3,6 +3,7 @@ import { Bug, Hammer, Infinity as InfinityIcon, Zap, Code2, GraduationCap, Boxes
 import { Hero } from "@/components/home/Hero";
 import { debugLabs, buildLabs, drills, problems } from "@/content";
 import { HomeProgress } from "@/components/home/HomeProgress";
+import { PixelRows, EffectSheet } from "@/components/home/PixelSections";
 
 const modes = [
   { href: "/debug", icon: Bug, color: "var(--rose)", title: "Debug Labs", body: "Multi-file Node & Python services with a bug ticket and failing tests. Exactly the AI-assisted debugging round shape.", tag: "core" },
@@ -29,6 +30,8 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-4 pb-6">
         <HomeProgress />
       </section>
+
+      <PixelRows />
 
       <section className="mx-auto max-w-7xl px-4 py-12">
         <div className="mb-8 flex items-end justify-between gap-4">
@@ -61,6 +64,8 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      <EffectSheet />
 
       <section className="mx-auto max-w-7xl px-4 py-12">
         <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">

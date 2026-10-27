@@ -67,7 +67,7 @@ export function SectionTitle({ eyebrow, title, sub, color = "var(--orange)", art
     <div className="mb-8 flex items-center gap-8">
       <div className="min-w-0 flex-1">
         {eyebrow && (
-          <div className="mb-3 flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.2em]" style={{ color }}>
+          <div className="px-label mb-3 flex items-center gap-2" style={{ color }}>
             <span className="cube" style={{ background: color }} />
             {eyebrow}
           </div>

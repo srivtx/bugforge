@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, JetBrains_Mono, Silkscreen } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { themeScript } from "@/lib/theme";
 
 const display = Space_Grotesk({ variable: "--font-display", subsets: ["latin"] });
 const code = JetBrains_Mono({ variable: "--font-code", subsets: ["latin"] });
+const pixel = Silkscreen({ variable: "--font-silk", subsets: ["latin"], weight: ["400", "700"] });
 
 export const metadata: Metadata = {
   title: "BugForge: OA Debug, Build & DSA Arena",
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       {/* extensions (e.g. ColorZilla) add attributes to <body> before hydration */}
-      <body className={`${display.variable} ${code.variable} min-h-screen antialiased`} suppressHydrationWarning>
+      <body className={`${display.variable} ${code.variable} ${pixel.variable} min-h-screen antialiased`} suppressHydrationWarning>
         <div className="backdrop" aria-hidden>
           <i />
           <i />

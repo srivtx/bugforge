@@ -107,6 +107,7 @@
   --color-code: var(--code-bg);
   --font-sans: var(--font-display);
   --font-mono: var(--font-code);
+  --font-pixel: var(--font-silk);
 }
 
 body {
@@ -274,3 +275,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .iso-drop, .iso-float, .backdrop > i, .animate-float { animation: none !important; }
 }
+
+/* ---------------------------------------------------------------- pixel accents */
+.px-label { font-family: var(--font-silk), ui-monospace, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+/* a sheet of flat-colour posters: same paper in both themes, like printed cards */
+.poster-band { --paper: #fbf1e3; --paper-ink: #1d2f6f; background: var(--paper); color: #17151c; }
