@@ -5,8 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 import {
-  ArrowLeft, Play, RotateCcw, FileCode2, FolderOpen, Lock, Lightbulb, ScrollText, Wrench, Workflow, Terminal, ListChecks, Eye, Timer, Trophy, GitCompare, CheckCircle2, Bug, Hammer,
+  ArrowLeft, Play, RotateCcw, FileCode2, FolderOpen, Lock, Lightbulb, ScrollText, Wrench, Workflow, Terminal, ListChecks, Eye, Timer, Trophy, GitCompare, CheckCircle2, Bug, Hammer, PanelLeftClose, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { usePanel, Splitter } from "@/components/Resizable";
 import type { Lab, LabRun } from "@/lib/types";
 import { runLab } from "@/lib/runners";
 import { update, loadDraft, saveDraft, clearDraft, useProgress } from "@/lib/progress";
@@ -64,6 +65,10 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
   const [status, setStatus] = useState<string>("");
   const [leftTab, setLeftTab] = useState<LeftTab>("ticket");
   const [bottom, setBottom] = useState<BottomTab>("tests");
+  const leftPanel = usePanel("lab-left", 380);
+  const bottomPanel = usePanel("lab-bottom", 300);
+  const expandBottom = bottomPanel.setCollapsed;
+  const editorCol = useRef<HTMLDivElement>(null);
   const [hintsShown, setHintsShown] = useState(0);
   const [notesShown, setNotesShown] = useState(0);
   const [diffFor, setDiffFor] = useState<string | null>(null);
@@ -99,6 +104,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
   const doRun = useCallback(async () => {
     if (running) return;
     setRunning(true);
+    expandBottom(false);
     setStatus("Running tests…");
     const res = await runLab(lab.lang, { ...files, ...lab.tests }, Object.keys(lab.tests), lab.env, setStatus);
     setRun(res);
@@ -129,7 +135,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
       setTimeout(() => setCelebrate(false), 3200);
       onSolved?.(ms);
     }
-  }, [running, lab, files, startAt, initialFiles, onSolved]);
+  }, [running, lab, files, startAt, initialFiles, onSolved, expandBottom]);
 
   const reset = () => {
     if (!confirm("Reset all files to the original starting code?")) return;
@@ -180,8 +186,24 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
 
       <div className="flex min-h-0 flex-1">
         {/* left: ticket */}
-        <aside className="hidden w-[min(400px,32vw)] shrink-0 flex-col border-r border-line bg-bg-2/40 md:flex">
-          <div className="flex shrink-0 gap-1 border-b border-line px-2 pt-2">
+        {leftPanel.collapsed ? (
+          <div className="hidden w-11 shrink-0 flex-col items-center gap-1 border-r border-line bg-bg-2/40 py-2 md:flex">
+            {(
+              [
+                ["ticket", lab.kind === "build" ? "Spec" : "Ticket", ScrollText],
+                ["hints", "Hints", Lightbulb],
+                ["notes", lab.kind === "build" ? "Steps" : "Root causes", Wrench],
+              ] as const
+            ).map(([k, label, Icon]) => (
+              <button key={k} title={label} onClick={() => (setLeftTab(k), leftPanel.setCollapsed(false))} className="rounded-lg p-2 text-muted hover:bg-panel-2 hover:text-text">
+                <Icon className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        ) : (
+        <>
+        <aside style={{ width: leftPanel.size }} className="hidden shrink-0 flex-col border-r border-line bg-bg-2/40 md:flex">
+          <div className="flex shrink-0 items-end gap-1 border-b border-line px-2 pt-2">
             {(
               [
                 ["ticket", lab.kind === "build" ? "Spec" : "Ticket", ScrollText],
@@ -193,6 +215,9 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
                 <Icon className="h-3.5 w-3.5" /> {label}
               </button>
             ))}
+            <button title="Hide panel" onClick={() => leftPanel.setCollapsed(true)} className="mb-1 ml-auto rounded-md p-1.5 text-dim hover:bg-panel-2 hover:text-text">
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
           </div>
           <div className="scroll-thin min-h-0 flex-1 overflow-y-auto p-4">
             {leftTab === "ticket" && (
@@ -266,6 +291,9 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
               ))}
           </div>
         </aside>
+        <Splitter axis="x" className="hidden md:block" size={leftPanel.size} min={260} max={() => Math.max(300, window.innerWidth * 0.55)} onSize={leftPanel.setSize} onReset={leftPanel.reset} />
+        </>
+        )}
 
         {/* explorer */}
         <div className="hidden w-52 shrink-0 flex-col border-r border-line bg-bg-2/30 py-2 lg:flex">
@@ -295,7 +323,7 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
         </div>
 
         {/* editor + results */}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div ref={editorCol} className="flex min-w-0 flex-1 flex-col">
           <div className="scroll-thin flex shrink-0 overflow-x-auto border-b border-line bg-bg-2/60">
             {openTabs.map((p) => (
               <button key={p} onClick={() => setActive(p)} className={clsx("flex shrink-0 items-center gap-1.5 border-r border-line px-3 py-2 font-mono text-xs", active === p ? "bg-code text-text shadow-[inset_0_3px_0_0_var(--orange)]" : "text-dim hover:text-muted")}>
@@ -326,14 +354,17 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
               ))}
             </select>
           </div>
-          <div className="relative min-h-0 flex-[1.4]">
+          <div className="relative min-h-0 flex-1">
             {isTest(active) && <div className="absolute right-3 top-2 z-10 rounded-md bg-panel-2 px-2 py-0.5 text-[11px] text-dim ring-1 ring-line">read-only test file</div>}
             <CodeEditor path={`${lab.slug}/${active}`} value={value} language={langFor(active)} readOnly={isTest(active)} onChange={(v) => setFile(active, v)} onRun={doRun} />
           </div>
 
           {/* results */}
-          <div className="flex min-h-0 flex-1 flex-col border-t border-line bg-bg-2/50">
-            <div className="flex shrink-0 items-center gap-1 border-b border-line px-2">
+          {!bottomPanel.collapsed && (
+            <Splitter axis="y" size={bottomPanel.size} min={120} max={() => (editorCol.current?.clientHeight ?? 600) - 120} onSize={bottomPanel.setSize} onReset={bottomPanel.reset} />
+          )}
+          <div style={bottomPanel.collapsed ? undefined : { height: bottomPanel.size }} className="flex min-h-0 shrink-0 flex-col border-t border-line bg-bg-2/50">
+            <div className="scroll-thin flex shrink-0 items-center gap-1 overflow-x-auto border-b border-line px-2">
               {(
                 [
                   ["tests", "Tests", ListChecks],
@@ -341,12 +372,12 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
                   ["logs", "Logs", Terminal],
                 ] as const
               ).map(([k, label, Icon]) => (
-                <button key={k} onClick={() => setBottom(k)} className={clsx("flex items-center gap-1.5 px-3 py-2 text-xs", bottom === k ? "text-text shadow-[inset_0_-2px_0_0_var(--orange)]" : "text-muted hover:text-text")}>
+                <button key={k} onClick={() => (setBottom(k), bottomPanel.setCollapsed(false))} className={clsx("flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 text-xs", bottom === k && !bottomPanel.collapsed ? "text-text shadow-[inset_0_-2px_0_0_var(--orange)]" : "text-muted hover:text-text")}>
                   <Icon className="h-3.5 w-3.5" /> {label}
                   {k === "logs" && run && run.logs.length > 0 && <span className="rounded bg-panel-2 px-1 text-[10px]">{run.logs.length}</span>}
                 </button>
               ))}
-              <div className="ml-auto flex items-center gap-3 pr-2">
+              <div className="ml-auto flex shrink-0 items-center gap-3 pr-2">
                 {status && <span className="text-xs text-amber">{status}</span>}
                 {run && (
                   <span className={clsx("font-mono text-xs font-semibold", passed === total ? "text-mint" : "text-rose")}>
@@ -354,13 +385,18 @@ export function LabWorkspace({ lab, storageKey, initialFiles, headerExtra, onSol
                   </span>
                 )}
                 <TestBlocks run={run} total={total} />
+                <button title={bottomPanel.collapsed ? "Show panel" : "Hide panel"} onClick={bottomPanel.toggle} className="rounded-md p-1 text-dim hover:bg-panel-2 hover:text-text">
+                  {bottomPanel.collapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
               </div>
             </div>
-            <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
-              {bottom === "tests" && <TestPanel run={run} running={running} />}
-              {bottom === "flow" && <RequestFlow run={run} />}
-              {bottom === "logs" && <LogsPanel run={run} />}
-            </div>
+            {!bottomPanel.collapsed && (
+              <div className="scroll-thin min-h-0 flex-1 overflow-y-auto">
+                {bottom === "tests" && <TestPanel run={run} running={running} />}
+                {bottom === "flow" && <RequestFlow run={run} />}
+                {bottom === "logs" && <LogsPanel run={run} />}
+              </div>
+            )}
           </div>
         </div>
       </div>
