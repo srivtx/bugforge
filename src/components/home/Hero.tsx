@@ -1,82 +1,80 @@
 "use client";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Bug, Hammer, ArrowRight, MousePointerClick } from "lucide-react";
+import { PixelArt } from "@/components/PixelArt";
+import { bug, wrench, potion, tree } from "@/content/sprites";
 
-const VoxelMorph = dynamic(() => import("@/components/three/VoxelMorph").then((m) => m.VoxelMorph), {
-  ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-[28px] bg-panel-2/60" />,
-});
-
-const CAPTIONS: Record<string, { label: string; color: string }> = {
-  bug: { label: "Debug: find the regression", color: "var(--orange)" },
-  code: { label: "DSA: crack the pattern", color: "var(--violet)" },
-  hammer: { label: "Build: TODO → green", color: "var(--cyan)" },
-  database: { label: "Data: query it right", color: "var(--mint)" },
-};
+// Click the card to cycle the mascot: each sprite re-assembles from scattered pixels.
+const STAGES = [
+  { sprite: bug, tag: "debug", label: "Find the regression" },
+  { sprite: wrench, tag: "hunt", label: "Fix it against the clock" },
+  { sprite: potion, tag: "build", label: "Brew it from TODOs" },
+  { sprite: tree, tag: "dsa", label: "Crack the pattern" },
+];
 
 export function Hero({ counts }: { counts: { debug: number; build: number; dsa: number; drills: number } }) {
-  const [shape, setShape] = useState("bug");
-  const cap = CAPTIONS[shape];
+  const [i, setI] = useState(0);
+  const s = STAGES[i];
+  const stats = [
+    [counts.debug, "debug labs"],
+    [counts.build, "build labs"],
+    [counts.drills, "bug drills"],
+    [counts.dsa, "DSA problems"],
+  ] as const;
+
   return (
-    <section className="relative overflow-hidden">
-      <div className="mx-auto grid max-w-7xl items-center gap-6 px-4 pb-10 pt-12 lg:grid-cols-[1.05fr_1fr] lg:pt-16">
+    <section className="mx-auto max-w-7xl px-4 pt-8">
+      <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 border-b border-line pb-3 text-dim">
+        <span className="px-label">BugForge / 00</span>
+        <span className="px-label hidden sm:inline">Interview practice</span>
+        <span className="px-label hidden md:inline">Debug · Build · DSA</span>
+        <span className="px-label">Runs in your browser</span>
+      </div>
+
+      <div className="grid items-center gap-10 py-10 lg:grid-cols-[1.1fr_1fr] lg:py-14">
         <div>
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="vx-sm mb-6 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold">
-            <span className="cube" style={{ background: "var(--mint)" }} />
-            Debug · Build · DSA practice · runs 100% in your browser
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="text-[2.7rem] font-bold leading-[1.02] tracking-tight md:text-[4.1rem]">
+          <h1 className="text-[3rem] font-semibold leading-[0.98] tracking-[-0.035em] md:text-[5rem]">
             Break it.
             <br />
-            Fix it. <span className="text-gradient">Build it.</span>
-          </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }} className="mt-5 max-w-xl text-lg leading-relaxed text-muted">
-            Real multi-file codebases with failing tests, an endless bug-injection engine, build-from-scratch labs, rapid spot-the-bug drills and DSA, all with 3D voxel visualizations of what your code is actually doing.
-          </motion.p>
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }} className="mt-8 flex flex-wrap gap-3">
+            Fix it.
+            <br />
+            <span className="text-orange">Build it.</span>
+          </h1>
+          <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-muted">Real codebases with failing tests, an endless bug-injection engine, build-from-scratch labs, spot-the-bug drills and DSA. Free, and it all runs in your browser.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/hunt" className="vx-btn inline-flex items-center gap-2 bg-orange px-5 py-3 font-semibold text-white [--btn-edge:var(--orange-edge)]">
               <Bug className="h-5 w-5" /> Start a Bug Hunt <ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="/build" className="vx-btn inline-flex items-center gap-2 border-2 border-line bg-panel px-5 py-3 font-semibold">
-              <Hammer className="h-5 w-5 text-cyan" /> Build something
+            <Link href="/debug" className="vx-btn inline-flex items-center gap-2 border-2 border-line bg-panel px-5 py-3 font-semibold">
+              <Hammer className="h-5 w-5 text-orange" /> Browse labs
             </Link>
-          </motion.div>
-          <div className="mt-9 grid max-w-lg grid-cols-4 gap-2">
-            {[
-              [counts.debug, "debug labs", "var(--rose)"],
-              [counts.build, "build labs", "var(--cyan)"],
-              [counts.drills, "bug drills", "var(--amber)"],
-              [counts.dsa, "DSA problems", "var(--violet)"],
-            ].map(([n, l, c]) => (
-              <div key={l as string} className="vx-sm px-3 py-2">
-                <div className="text-xl font-bold" style={{ color: c as string }}>
-                  {n}
-                </div>
-                <div className="text-[11px] leading-tight text-dim">{l}</div>
-              </div>
-            ))}
           </div>
         </div>
-        <div className="relative">
-          <div className="relative aspect-square w-full cursor-pointer">
-            <div className="absolute inset-[8%] rounded-full bg-[radial-gradient(circle,color-mix(in_oklab,var(--orange)_22%,transparent),transparent_65%)] blur-2xl" />
-            <VoxelMorph className="absolute inset-0" onShape={setShape} />
-          </div>
-          <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
-            <AnimatePresence mode="wait">
-              <motion.div key={shape} initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }} className="vx-sm px-4 py-2 text-sm font-semibold" style={{ color: cap.color }}>
-                {cap.label}
-              </motion.div>
-            </AnimatePresence>
-            <span className="flex items-center gap-1 text-[11px] text-dim">
-              <MousePointerClick className="h-3 w-3" /> click to morph
+
+        <button type="button" onClick={() => setI((i + 1) % STAGES.length)} aria-label={`Show next mascot (now: ${s.label})`} className="group relative mx-auto aspect-square w-full max-w-[520px] cursor-pointer overflow-hidden rounded-2xl border border-line bg-[#fbf8f2] text-left">
+          <PixelArt sprite={s.sprite} grid="lines" gridColor="rgba(128,118,104,0.16)" pad={3} label={s.label} className="absolute inset-0 h-full w-full" />
+          <span className="px-label absolute left-3 top-3 text-[#8c889a]">fig. {String(i + 1).padStart(2, "0")} — {s.tag}</span>
+          <span className="px-label absolute right-3 top-3 text-[#8c889a]">
+            {i + 1}/{STAGES.length}
+          </span>
+          <span className="absolute inset-x-3 bottom-3 flex items-end justify-between">
+            <span className="text-sm font-semibold text-[#17151c]">{s.label}</span>
+            <span className="px-label flex items-center gap-1 text-[#8c889a] transition group-hover:text-[#17151c]">
+              <MousePointerClick className="h-3 w-3" /> click
             </span>
-          </div>
-        </div>
+          </span>
+        </button>
       </div>
+
+      <dl className="grid grid-cols-2 border-y border-line sm:grid-cols-4">
+        {stats.map(([n, l], k) => (
+          <div key={l} className={`py-4 ${k ? "sm:border-l sm:pl-5" : ""} ${k % 2 ? "border-l border-line pl-5" : ""} border-line`}>
+            <dt className="px-label text-dim">{l}</dt>
+            <dd className="mt-1 text-3xl font-semibold tabular-nums tracking-tight">{n}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

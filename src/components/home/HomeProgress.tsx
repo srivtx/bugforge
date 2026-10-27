@@ -17,23 +17,23 @@ export function HomeProgress() {
     { icon: Code2, c: "var(--violet)", v: dsaSolved, l: "DSA solved" },
   ];
   return (
-    <div className="vx flex flex-wrap items-center gap-x-8 gap-y-4 px-6 py-4">
-      <div className="text-sm font-semibold">
-        Your forge <span className="ml-1 text-xs font-normal text-dim">{days ? `${days} active day${days > 1 ? "s" : ""}` : "start today"}</span>
+    <section className="mx-auto max-w-7xl px-4 pt-6">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-3 rounded-2xl border border-line bg-panel px-5 py-3">
+        <span className="px-label text-orange">Your forge · {days ? `${days} day${days > 1 ? "s" : ""}` : "start today"}</span>
+        {items.map((it) => {
+          const I = it.icon;
+          return (
+            <div key={it.l} className="flex items-center gap-2">
+              <I className="h-4 w-4" style={{ color: it.c }} />
+              <span className="text-lg font-semibold tabular-nums">{it.v}</span>
+              <span className="px-label text-dim">{it.l}</span>
+            </div>
+          );
+        })}
+        <Link href="/progress" className="px-label ml-auto flex items-center gap-1 text-dim hover:text-orange">
+          Stats <ArrowRight className="h-3 w-3" />
+        </Link>
       </div>
-      {items.map((it) => {
-        const I = it.icon;
-        return (
-          <div key={it.l} className="flex items-center gap-2">
-            <I className="h-5 w-5" style={{ color: it.c }} />
-            <span className="text-lg font-bold tabular-nums">{it.v}</span>
-            <span className="text-xs text-dim">{it.l}</span>
-          </div>
-        );
-      })}
-      <Link href="/progress" className="ml-auto flex items-center gap-1 text-sm font-medium text-violet hover:underline">
-        Full stats <ArrowRight className="h-4 w-4" />
-      </Link>
-    </div>
+    </section>
   );
 }

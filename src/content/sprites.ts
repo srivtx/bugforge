@@ -81,3 +81,61 @@ export const potion: Sprite = {
     { x: 5, y: -1, c: "#ffb21f" },
   ],
 };
+
+// Spot the Bug: a lightning bolt, for speed drills.
+export const bolt: Sprite = {
+  rows: [
+    ".......KKKKK",
+    "......KYYYK.",
+    ".....KYYYK..",
+    "....KYYYK...",
+    "...KYYYK....",
+    "..KYYYYKKKK.",
+    ".KYYYYYYYYK.",
+    ".KKKKKYYYK..",
+    ".....KYYK...",
+    "....KYYK....",
+    "...KYYK.....",
+    "...KYK......",
+    "..KYK.......",
+    "..KK........",
+  ],
+  palette: { K: INK, Y: "#ffd23f" },
+};
+
+// DSA: a tiny binary tree.
+export const tree: Sprite = {
+  rows: [
+    ".....KKKK.....",
+    "....KVVVVK....",
+    "....KVWVVK....",
+    "....KVVVVK....",
+    ".....KKKK.....",
+    "....K....K....",
+    "...K......K...",
+    "..K........K..",
+    ".KKKK....KKKK.",
+    "KMMMMK..KMMMMK",
+    "KMWMMK..KMWMMK",
+    "KMMMMK..KMMMMK",
+    ".KKKK....KKKK.",
+  ],
+  palette: { K: INK, V: "#6c5cf5", M: "#10a874", W: "#ffffff" },
+};
+
+// Learn: an open book.
+export const book: Sprite = {
+  rows: [
+    ".KKKKKK..KKKKKK.",
+    "KWWWWWWKKWWWWWWK",
+    "KWKKKWWKKWKKKWWK",
+    "KWWWWWWKKWWWWWWK",
+    "KWKKKKWKKWKKKKWK",
+    "KWWWWWWKKWWWWWWK",
+    "KWKKKWWKKWKKWWWK",
+    "KWWWWWWKKWWWWWWK",
+    "KRRRRRRKKRRRRRRK",
+    ".KKKKKKKKKKKKKK.",
+  ],
+  palette: { K: INK, W: "#ffffff", R: "#ff7a1a" },
+};
