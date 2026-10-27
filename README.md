@@ -1,58 +1,150 @@
-# BugForge
+<div align="center">
 
-A free, browser-only practice arena for coding interviews and online assessments, built around **debugging real codebases**, **building components from a spec**, and **DSA patterns**, with 3D/voxel visualizations and an explanation on every screen.
+# 🟧 BugForge
 
-Everything runs client-side (Web Workers + Pyodide), so it deploys as a static site on Vercel's free tier with no backend.
+**Break it. Fix it. Build it.**
+
+A free, browser-only practice arena for coding interviews and online assessments.<br/>
+Debug real multi-file codebases, build components from a spec, and drill DSA patterns, with 3D voxel visualizations and an explanation on every screen.
+
+No account, no backend, no API keys. Everything runs in your browser.
+
+`Next.js 15` · `React 19` · `three.js` · `Monaco` · `Pyodide` · `Tailwind v4`
+
+</div>
+
+---
+
+## Why
+
+Modern technical assessments rarely ask you to "reverse a linked list" anymore. More often you get a **small repository, a bug ticket and a red test suite**, and you have to find the root cause under time pressure. Or you get a spec and some stubs and have to implement the feature until the tests pass.
+
+That skill comes from repetition, and most practice sites don't offer it. BugForge is built around that loop:
+
+> run the tests → read the first failure → form one hypothesis → change one thing → re-run
 
 ## What's inside
 
 | Mode | What you do |
 |---|---|
-| **Debug labs** (23) | Multi-file Node/Express/Mongoose or Python services with a bug ticket and a red test suite. Fix the root causes until every test is green. A *Request flow* view (2D and 3D) shows each request travelling through middleware → handler → database. |
-| **Build labs** (9) | The opposite: tests describe a component that doesn't exist yet (rate limiter, job queue, LRU, JWT auth, KV store with transactions…). Implement it. |
-| **Bug Hunt ∞** | Endless generated bugs: a mutation engine injects 1–3 real bugs into working labs, verified to break the tests. Find them against the clock. |
-| **Spot the Bug** (65) | Fast drills in JS, Python, Java and C++: click the buggy line, pick the diagnosis, read the fix. |
-| **DSA** (30) | Pattern-grouped problems with hidden tests (incl. large inputs that catch O(n²)), progressive hints, a written approach, and step-by-step visualizations. JS or Python. |
-| **3D Lab** | An orbitable voxel world of HTTP requests hitting MongoDB collections, plus an algorithm playground with editable inputs (grid BFS rises as 3D voxel waves). |
-| **Learn** | Short visual explainers: debugging playbook, event loop, Express pipeline, Mongoose, status codes, async pitfalls, JS/Python gotchas, concurrency, pattern cheat sheet. |
-| **Progress** | Local-only stats, activity heatmap, weak-topic breakdown, export/import. |
+| 🐞 **Debug labs** (23) | Multi-file Node/Express/Mongoose or Python services, each with a bug ticket and a failing test suite. Find every root cause until the suite is green. The **Request flow** view (2D and 3D) shows each HTTP request travelling through middleware → router → handler → database, so you can *see* where it goes wrong. |
+| 🔧 **Build labs** (9) | The reverse. The tests describe something that doesn't exist yet: a rate limiter, job queue, event emitter, JWT auth, KV store with transactions, parking lot, file system… Implement it from the stubs. |
+| ♾️ **Bug Hunt** | Endless generated bugs. A mutation engine injects 1–3 real bugs into working labs (flipped comparisons, off-by-ones, swapped `&&`/`||`, dropped `await`s, missing `return`s…). Each one is verified to break the tests. Clear them against the clock. |
+| ⚡ **Spot the Bug** (65) | Rapid-fire drills in JavaScript, Python, Java and C++. Click the buggy line, pick the diagnosis, then read why it's wrong and what the fix is. |
+| 🧮 **DSA** (30) | Problems grouped by pattern. Hidden test suites include large inputs that catch O(n²) solutions. Each problem has progressive hints, a written approach and a step-by-step visualization. Solve in JS or Python. |
+| 🧊 **3D Lab** | An orbitable voxel world where HTTP requests hit MongoDB collections (one voxel per document, and matches light up), plus an algorithm playground with editable inputs. |
+| 📚 **Learn** | Short visual explainers: debugging playbook, event loop, Express pipeline, Mongoose, HTTP status codes, async pitfalls, JS/Python gotchas, concurrency and a pattern cheat sheet. Each one links to the labs that test it. |
+| 📈 **Progress** | Local-only stats, an activity heatmap, accuracy by topic and "up next" suggestions. Export or import as JSON. |
 
-Light and dark themes follow the system and can be toggled.
+Light and dark themes follow your system and can be toggled.
+
+## How it works
+
+Everything executes client-side, in Web Workers, so the UI never freezes and the site deploys as plain static files.
+
+```
+┌──────────────────── browser ────────────────────┐
+│  Monaco editor ──► Web Worker                   │
+│                    ├─ JS lab runtime   Express, Mongoose (in-memory),
+│                    │                   supertest, Jest-style expect,
+│                    │                   jwt, bcrypt, fake timers…
+│                    ├─ Pyodide          CPython + unittest for Python labs
+│                    └─ DSA judge        hidden tests, time limits, verdicts
+│                                                 │
+│  trace of every request ──► 2D / 3D flow view   │
+└─────────────────────────────────────────────────┘
+```
+
+- **The JS lab runtime** (`public/workers/lab-runner.js`) is a small sandbox with in-memory stand-ins for Express, Mongoose, supertest, Jest's `expect`/`jest.fn`/`spyOn`/fake timers, `jsonwebtoken` and `bcryptjs`. It records a trace of each request, which drives the request-flow visualizations.
+- **Python** runs in Pyodide. The same harness (`py_lab_harness.py`) is used at build time with real CPython.
+- **Progress** lives in `localStorage`. Nothing leaves your machine.
+
+### Verified content
+
+All content is checked at build time, so nothing broken ships:
+
+- **Labs:** the buggy code must *fail* the tests, and the reference fix must *pass all of them*.
+- **DSA:** each problem's reference solution is cross-checked against a brute-force solution and a Python version on seeded random tests. That run also produces the hidden test files.
+- **Drills:** each one is checked for exactly one marked buggy line and a unique id.
 
 ## Run locally
 
+Requires **Node 20+**.
+
 ```bash
+git clone https://github.com/srivtx/bugforge.git
+cd bugforge
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open <http://localhost:3000>.
 
-## Deploy to Vercel (free)
-
-1. Push this repo to GitHub.
-2. In Vercel: **Add New → Project**, import the repo. The Next.js preset is detected automatically; no settings or environment variables are needed.
-3. Deploy. `next.config.ts` uses `output: "export"`, so the site is fully static.
-
-Or from the CLI:
+Production build (static export to `out/`):
 
 ```bash
-npx vercel --prod
+npm run build
+npm start        # serves ./out
 ```
+
+## Deploy
+
+It's a fully static site (`output: "export"`), so any static host works.
+
+**Vercel:** import the repo, keep the detected Next.js preset and deploy. No environment variables are needed.
 
 ## Adding content
 
-Content lives in `content-src/` and is compiled (and **verified**) into `src/content/*.generated.json` and `public/tests/`:
+Sources live in `content-src/` and compile into `src/content/*.generated.json` and `public/tests/`. Generated files are committed, so hosts only run `next build`. Re-running the verifiers needs `python3` locally.
 
 ```bash
-npm run content          # all of it
-npm run content:labs     # labs: buggy code must fail, fixed code must pass
-npm run content:dsa      # DSA: reference vs brute force vs Python, seeded random tests
-npm run content:drills   # spot-the-bug drills
+npm run content          # everything
+npm run content:labs     # verify labs: buggy fails, fixed passes
+npm run content:dsa      # verify DSA problems and generate hidden tests
+npm run content:drills   # compile spot-the-bug drills
 ```
 
-The verification scripts need Node 20+ and `python3` locally. Generated files are committed, so Vercel only runs `next build`.
+<details>
+<summary><b>Lab format</b> (<code>content-src/labs/*.mjs</code>)</summary>
 
-## Tech
+```js
+export default {
+  slug: "response-cache",
+  lang: "js",                    // or "py"
+  kind: "debug",                 // or "build"
+  title: "Product Page Response Cache",
+  difficulty: "Medium",
+  minutes: 30,
+  tagline: "One-line hook shown on the card.",
+  ticket: `**CAT-512 · Markdown bug ticket**`,
+  files:  { "app.js": "...", "middleware/cache.js": "..." },  // what the user edits
+  tests:  { "tests/cache.test.js": "..." },
+  fixes:  { "middleware/cache.js": "..." },                   // reference fix
+  bugs:   [{ file, title, explain }],                         // revealed after solving
+  hints:  ["..."],
+  concepts: ["this binding", "TTL"],
+};
+```
+</details>
 
-Next.js 15 (App Router, static export) · React 19 · Tailwind v4 · framer-motion · three.js via @react-three/fiber + drei · Monaco editor · Pyodide.
+<details>
+<summary><b>Drill format</b> (<code>content-src/drills.mjs</code>)</summary>
+
+Mark the buggy line with a trailing `// @bug` (or `# @bug`). The build strips the marker, records the line and shuffles the options.
+</details>
+
+## Project layout
+
+```
+content-src/        lab, DSA and drill sources (verified at build time)
+scripts/            build-time verifiers / compilers
+public/workers/     JS lab runtime, Pyodide runner, DSA judges
+public/tests/       generated hidden DSA tests
+src/app/            routes: debug, build, hunt, drills, dsa, visualize, learn, progress
+src/components/     workspace, editors, 3D scenes (three/), visualizers (viz/)
+src/lib/            progress store, bug mutation engine, theme
+```
+
+## Contributing
+
+New labs, drills and problems are very welcome. Add a file to `content-src/`, run `npm run content`, and open a PR. If verification passes, it works.
