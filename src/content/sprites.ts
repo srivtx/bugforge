@@ -4,7 +4,9 @@ import type { Sprite } from "@/lib/pixelfield";
 /** Builds a symmetric sprite from its left half (the middle column is not repeated). */
 const mirror = (half: string[]) => half.map((r) => r + [...r].reverse().join(""));
 
-const INK = "#17151c";
+// Warm, softened palette so sprites sit on the paper cards instead of shouting over them.
+const INK = "#3b342f";
+const PAPER = "#fbf7f0";
 
 // Glitch: the sleepy BugForge bug. Flat-top eyes, red nose, orange split shell.
 export const bug: Sprite = {
@@ -27,7 +29,7 @@ export const bug: Sprite = {
     "..K.KKKK",
     ".K......",
   ]),
-  palette: { K: INK, W: "#ffffff", R: "#ff2d3d", O: "#ff7a1a", Y: "#ffb21f" },
+  palette: { K: INK, W: PAPER, R: "#df6a60", O: "#eb9a5e", Y: "#f3c978" },
 };
 
 export const wrench: Sprite = {
@@ -48,7 +50,7 @@ export const wrench: Sprite = {
     "KBBK............",
     ".KK.............",
   ],
-  palette: { K: INK, W: "#cfe3ee", B: "#2f6bff" },
+  palette: { K: INK, W: "#dde8eb", B: "#7f97d6" },
 };
 
 // A bubbling potion: the thing you brew in a build lab.
@@ -72,13 +74,13 @@ export const potion: Sprite = {
     "...KLLLL",
     "....KKKK",
   ]).map((r) => r.slice(0, 8) + r.slice(8).replace(/H/g, "O")),
-  palette: { K: INK, R: "#e8262c", L: "#cdeef6", O: "#ff4a1c", H: "#ffc2b3" },
+  palette: { K: INK, R: "#d9675f", L: "#e1eef0", O: "#e98a66", H: "#f6d4c8" },
   sparks: [
-    { x: 6, y: -0.5, c: "#ff4a1c" },
-    { x: 9, y: -1, c: "#ff4a1c" },
-    { x: 7, y: -1.5, c: "#ffb21f" },
-    { x: 10, y: 0, c: "#ff4a1c" },
-    { x: 5, y: -1, c: "#ffb21f" },
+    { x: 6, y: -0.5, c: "#e98a66" },
+    { x: 9, y: -1, c: "#e98a66" },
+    { x: 7, y: -1.5, c: "#f3c978" },
+    { x: 10, y: 0, c: "#e98a66" },
+    { x: 5, y: -1, c: "#f3c978" },
   ],
 };
 
@@ -100,7 +102,7 @@ export const bolt: Sprite = {
     "..KYK.......",
     "..KK........",
   ],
-  palette: { K: INK, Y: "#ffd23f" },
+  palette: { K: INK, Y: "#f2cf74" },
 };
 
 // DSA: a tiny binary tree.
@@ -120,7 +122,7 @@ export const tree: Sprite = {
     "KMMMMK..KMMMMK",
     ".KKKK....KKKK.",
   ],
-  palette: { K: INK, V: "#6c5cf5", M: "#10a874", W: "#ffffff" },
+  palette: { K: INK, V: "#9d92df", M: "#78b99a", W: PAPER },
 };
 
 // Learn: an open book.
@@ -137,5 +139,5 @@ export const book: Sprite = {
     "KRRRRRRKKRRRRRRK",
     ".KKKKKKKKKKKKKK.",
   ],
-  palette: { K: INK, W: "#ffffff", R: "#ff7a1a" },
+  palette: { K: INK, W: PAPER, R: "#eb9a5e" },
 };

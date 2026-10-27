@@ -7,14 +7,14 @@ import { bug, wrench, potion, tree, bolt, book } from "@/content/sprites";
 import type { PixelMode } from "@/lib/pixelfield";
 
 // The hero poster flips every few seconds: each cell of the old sprite flies to the new one,
-// and the render mode and flat paper colour change with it. Click to flip early, hover to hold.
+// and the paper colour changes with it. Only square-pixel modes here, no dots or stitches. Click to flip early, hover to hold.
 const STAGES: { sprite: typeof bug; mode: PixelMode; bg: string; tag: string; label: string }[] = [
   { sprite: bug, mode: "original", bg: "#e6e0f3", tag: "debug", label: "Find the regression" },
-  { sprite: wrench, mode: "halftone", bg: "#f5e6b8", tag: "hunt", label: "Fix it against the clock" },
+  { sprite: wrench, mode: "mosaic", bg: "#f5e6b8", tag: "hunt", label: "Fix it against the clock" },
   { sprite: potion, mode: "dither", bg: "#d8ecdf", tag: "build", label: "Brew it from TODOs" },
-  { sprite: tree, mode: "mosaic", bg: "#f6dccb", tag: "dsa", label: "Crack the pattern" },
-  { sprite: bolt, mode: "rounded", bg: "#f1dad6", tag: "drills", label: "Spot it in seconds" },
-  { sprite: book, mode: "cross", bg: "#dbe7ee", tag: "learn", label: "Know why it broke" },
+  { sprite: tree, mode: "original", bg: "#f6dccb", tag: "dsa", label: "Crack the pattern" },
+  { sprite: bolt, mode: "original", bg: "#f1dad6", tag: "drills", label: "Spot it in seconds" },
+  { sprite: book, mode: "dither", bg: "#dbe7ee", tag: "learn", label: "Know why it broke" },
 ];
 const HOLD = 3400;
 
@@ -76,7 +76,7 @@ export function Hero({ counts }: { counts: { debug: number; build: number; dsa: 
           <span className="px-label absolute left-4 top-4 text-[#17151c]/55">
             fig. {String(i + 1).padStart(2, "0")} — {s.tag}
           </span>
-          <span className="px-label absolute right-4 top-4 text-[#17151c]/55">{s.mode === "cross" ? "cross-stitch" : s.mode}</span>
+          <span className="px-label absolute right-4 top-4 text-[#17151c]/55">{s.mode}</span>
           <span className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-4">
             <span className="text-base font-semibold">{s.label}</span>
             <span className="flex gap-1" aria-hidden>
