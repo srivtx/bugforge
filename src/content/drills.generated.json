@@ -1,1 +1,1172 @@
-[]
+[
+ {
+  "id": "js-sum-reduce",
+  "lang": "javascript",
+  "topic": "arrays",
+  "difficulty": "Easy",
+  "prompt": "Should return the total price of the cart.",
+  "code": "function cartTotal(items) {\n  return items.reduce((sum, item) => {\n    sum + item.price * item.qty;\n  }, 0);\n}",
+  "fixed": "    return sum + item.price * item.qty;",
+  "explain": "A block-bodied arrow function needs an explicit `return`. Without it the callback returns `undefined`, so the accumulator becomes `undefined` and the result is NaN-ish/undefined.",
+  "options": [
+   "`sum` should be declared with let",
+   "reduce needs the initial value first",
+   "The reducer callback never returns the new sum",
+   "item.qty must be parsed with parseInt"
+  ],
+  "answer": 2,
+  "bugLine": 3
+ },
+ {
+  "id": "js-findindex",
+  "lang": "javascript",
+  "topic": "arrays",
+  "difficulty": "Easy",
+  "prompt": "Remove a product by id if it exists.",
+  "code": "function removeById(list, id) {\n  const i = list.findIndex((p) => p.id === id);\n  if (i) {\n    list.splice(i, 1);\n  }\n  return list;\n}",
+  "fixed": "  if (i !== -1) {",
+  "explain": "`findIndex` returns -1 when nothing matches (truthy!) and 0 for the first element (falsy). Compare explicitly with `-1`.",
+  "options": [
+   "Index 0 is falsy and -1 is truthy, so the check is wrong",
+   "splice should be slice",
+   "findIndex returns the element, not an index",
+   "=== should be =="
+  ],
+  "answer": 0,
+  "bugLine": 3
+ },
+ {
+  "id": "js-sort-numbers",
+  "lang": "javascript",
+  "topic": "sorting",
+  "difficulty": "Easy",
+  "prompt": "Return the three highest scores.",
+  "code": "function top3(scores) {\n  const sorted = [...scores].sort();\n  return sorted.reverse().slice(0, 3);\n}",
+  "fixed": "  const sorted = [...scores].sort((a, b) => a - b);",
+  "explain": "Default `sort()` converts elements to strings: `[100, 9, 25]` sorts as `['100', '25', '9']`. Numbers need a numeric comparator.",
+  "options": [
+   "Spreading the array loses elements",
+   "Default sort is lexicographic (string) order",
+   "reverse() mutates and returns undefined",
+   "slice(0, 3) returns 4 items"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "js-await-foreach",
+  "lang": "javascript",
+  "topic": "async",
+  "difficulty": "Medium",
+  "prompt": "Save all orders, then report how many were saved.",
+  "code": "async function saveAll(orders, db) {\n  let saved = 0;\n  orders.forEach(async (o) => {\n    await db.save(o);\n    saved++;\n  });\n  return saved;\n}",
+  "fixed": "  for (const o of orders) {",
+  "explain": "`forEach` doesn't await async callbacks. The function returns 0 before any save finishes. Use `for...of` with `await`, or `Promise.all(orders.map(...))`.",
+  "options": [
+   "saved must be a const",
+   "db.save needs a callback",
+   "forEach does not wait for async callbacks",
+   "orders must be awaited first"
+  ],
+  "answer": 2,
+  "bugLine": 3
+ },
+ {
+  "id": "js-missing-return-res",
+  "lang": "javascript",
+  "topic": "express",
+  "difficulty": "Medium",
+  "prompt": "Reject requests without an email.",
+  "code": "app.post('/signup', async (req, res) => {\n  if (!req.body.email) {\n    res.status(400).json({ error: 'email required' });\n  }\n  const user = await User.create(req.body);\n  res.status(201).json(user);\n});",
+  "fixed": "    return res.status(400).json({ error: 'email required' });",
+  "explain": "Without `return`, execution continues: it tries to create the user and send a second response, which throws \"Cannot set headers after they are sent\".",
+  "options": [
+   "Status 400 should be 422",
+   "req.body is undefined in Express",
+   "Missing return lets the handler continue and respond twice",
+   "User.create is synchronous"
+  ],
+  "answer": 2,
+  "bugLine": 3
+ },
+ {
+  "id": "js-closure-var",
+  "lang": "javascript",
+  "topic": "closures",
+  "difficulty": "Medium",
+  "prompt": "Each button should log its own index.",
+  "code": "function attach(buttons) {\n  for (var i = 0; i < buttons.length; i++) {\n    buttons[i].onclick = () => console.log(i);\n  }\n}",
+  "fixed": "  for (let i = 0; i < buttons.length; i++) {",
+  "explain": "`var` is function-scoped, so every closure shares one `i`, which equals `buttons.length` when clicked. `let` creates a fresh binding per iteration.",
+  "options": [
+   "Arrow functions can't capture variables",
+   "onclick must be addEventListener",
+   "buttons.length is evaluated once",
+   "`var` shares one binding across all closures"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "js-obj-equal",
+  "lang": "javascript",
+  "topic": "equality",
+  "difficulty": "Easy",
+  "prompt": "Check whether the user already liked this post.",
+  "code": "function hasLiked(likes, userId) {\n  return likes.includes({ userId });\n}",
+  "fixed": "  return likes.some((l) => l.userId === userId);",
+  "explain": "`includes` uses `===`/SameValueZero: a freshly created object is never identical to an element in the array. Compare a field with `some`.",
+  "options": [
+   "Objects compare by reference, so a new literal never matches",
+   "includes only works on strings",
+   "userId must be converted to a string",
+   "Should use indexOf"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "js-parseint-map",
+  "lang": "javascript",
+  "topic": "coercion",
+  "difficulty": "Medium",
+  "prompt": "Parse query-string ids into numbers.",
+  "code": "function parseIds(csv) {\n  return csv.split(',').map(parseInt);\n}",
+  "fixed": "  return csv.split(',').map((s) => parseInt(s, 10));",
+  "explain": "`map` passes `(value, index)`; `parseInt('2', 1)` → NaN because index becomes the radix. Wrap it or use `Number`.",
+  "options": [
+   "parseInt can't parse negative numbers",
+   "csv must be trimmed first",
+   "split returns a string",
+   "map passes the index as parseInt's radix"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "js-date-month",
+  "lang": "javascript",
+  "topic": "dates",
+  "difficulty": "Easy",
+  "prompt": "Format a date as YYYY-MM.",
+  "code": "function yearMonth(d) {\n  const m = String(d.getMonth()).padStart(2, '0');\n  return `${d.getFullYear()}-${m}`;\n}",
+  "fixed": "  const m = String(d.getMonth() + 1).padStart(2, '0');",
+  "explain": "`getMonth()` is zero-based (January = 0).",
+  "options": [
+   "padStart pads on the right",
+   "Template literals can't call methods",
+   "getFullYear returns 2 digits",
+   "getMonth() is zero-based"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "js-default-or",
+  "lang": "javascript",
+  "topic": "coercion",
+  "difficulty": "Medium",
+  "prompt": "Use the caller's page size, default 20.",
+  "code": "function pageSize(opts) {\n  return opts.limit || 20;\n}",
+  "fixed": "  return opts.limit ?? 20;",
+  "explain": "`||` replaces every falsy value: a deliberate `limit: 0` becomes 20. `??` only falls back for null/undefined.",
+  "options": [
+   "opts may be a string",
+   "20 should be a constant",
+   "|| treats 0 as missing; use ??",
+   "limit must be parsed"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "js-promise-all-fail",
+  "lang": "javascript",
+  "topic": "async",
+  "difficulty": "Medium",
+  "prompt": "Fetch all profiles; skip ones that fail.",
+  "code": "async function loadProfiles(ids, api) {\n  const results = await Promise.all(ids.map((id) => api.get(id)));\n  return results.filter(Boolean);\n}",
+  "fixed": "  const results = (await Promise.allSettled(ids.map((id) => api.get(id)))).map((r) => r.status === 'fulfilled' ? r.value : null);",
+  "explain": "`Promise.all` rejects as soon as one request fails, so you lose every result. `allSettled` gives each outcome.",
+  "options": [
+   "Promise.all rejects on the first failure",
+   "map can't return promises",
+   "ids must be deduplicated",
+   "filter(Boolean) removes valid profiles"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "js-this-callback",
+  "lang": "javascript",
+  "topic": "this",
+  "difficulty": "Medium",
+  "prompt": "Count clicks on the widget.",
+  "code": "class Counter {\n  constructor(el) {\n    this.count = 0;\n    el.addEventListener('click', this.inc);\n  }\n  inc() { this.count++; }\n}",
+  "fixed": "    el.addEventListener('click', () => this.inc());",
+  "explain": "Passing `this.inc` detaches the method; inside it `this` is the element (or undefined). Bind it or use an arrow wrapper.",
+  "options": [
+   "The method loses its `this` when passed as a callback",
+   "count should be static",
+   "Classes can't add listeners in constructors",
+   "inc must be async"
+  ],
+  "answer": 0,
+  "bugLine": 4
+ },
+ {
+  "id": "js-off-by-one-loop",
+  "lang": "javascript",
+  "topic": "loops",
+  "difficulty": "Easy",
+  "prompt": "Return pairs of adjacent items.",
+  "code": "function pairs(arr) {\n  const out = [];\n  for (let i = 0; i < arr.length; i++) {\n    out.push([arr[i], arr[i + 1]]);\n  }\n  return out;\n}",
+  "fixed": "  for (let i = 0; i < arr.length - 1; i++) {",
+  "explain": "The last iteration reads `arr[arr.length]` → undefined. Stop one earlier.",
+  "options": [
+   "push needs spread",
+   "const out can't be modified",
+   "Should start at 1",
+   "Loop runs one step too far (arr[i+1] is out of bounds)"
+  ],
+  "answer": 3,
+  "bugLine": 3
+ },
+ {
+  "id": "js-json-date",
+  "lang": "javascript",
+  "topic": "serialization",
+  "difficulty": "Medium",
+  "prompt": "Compare a cached order's createdAt with now.",
+  "code": "function isFresh(cached) {\n  const order = JSON.parse(cached);\n  return Date.now() - order.createdAt.getTime() < 60000;\n}",
+  "fixed": "  return Date.now() - new Date(order.createdAt).getTime() < 60000;",
+  "explain": "JSON has no Date type: after `JSON.parse`, `createdAt` is an ISO string, so `.getTime` is not a function.",
+  "options": [
+   "JSON.parse is async",
+   "Dates become strings after a JSON round trip",
+   "Date.now() returns seconds",
+   "60000 is 6 seconds"
+  ],
+  "answer": 1,
+  "bugLine": 3
+ },
+ {
+  "id": "js-mutate-default",
+  "lang": "javascript",
+  "topic": "objects",
+  "difficulty": "Medium",
+  "prompt": "Create a config from defaults.",
+  "code": "const DEFAULTS = { retries: 3, headers: {} };\nfunction makeConfig(overrides) {\n  const cfg = Object.assign(DEFAULTS, overrides);\n  return cfg;\n}",
+  "fixed": "  const cfg = Object.assign({}, DEFAULTS, overrides);",
+  "explain": "`Object.assign(target, ...)` mutates the target, so every call permanently changes DEFAULTS. Use a fresh `{}` (and deep-copy nested objects).",
+  "options": [
+   "overrides must be frozen",
+   "Object.assign is deep",
+   "Object.assign mutates DEFAULTS",
+   "const objects can't be returned"
+  ],
+  "answer": 2,
+  "bugLine": 3
+ },
+ {
+  "id": "js-string-number-add",
+  "lang": "javascript",
+  "topic": "coercion",
+  "difficulty": "Easy",
+  "prompt": "Add the quantity from a form field.",
+  "code": "function addToCart(cart, input) {\n  cart.qty = cart.qty + input.value;\n  return cart;\n}",
+  "fixed": "  cart.qty = cart.qty + Number(input.value);",
+  "explain": "Form values are strings: `2 + '3'` → `'23'` (string concatenation).",
+  "options": [
+   "cart is immutable",
+   "input.value is a number",
+   "Input values are strings, so + concatenates",
+   "qty needs Math.floor"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "js-settimeout-zero",
+  "lang": "javascript",
+  "topic": "event loop",
+  "difficulty": "Hard",
+  "prompt": "Log 'sync', then 'micro', then 'macro'.",
+  "code": "console.log('sync');\nsetTimeout(() => console.log('micro'), 0);\nPromise.resolve().then(() => console.log('macro'));",
+  "fixed": "queueMicrotask(() => console.log('micro'));",
+  "explain": "Promise callbacks are **microtasks** and run before **macrotasks** like setTimeout(0). As written it logs sync, macro, micro, and the labels are swapped.",
+  "options": [
+   "setTimeout(0) runs immediately",
+   "setTimeout is a macrotask; it runs after promise microtasks",
+   "console.log is async",
+   "Promise.resolve blocks"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "js-regex-global",
+  "lang": "javascript",
+  "topic": "regex",
+  "difficulty": "Hard",
+  "prompt": "Validate several SKUs with one regex.",
+  "code": "const SKU = /^[A-Z]{3}-\\d{4}$/g;\nfunction valid(skus) {\n  return skus.map((s) => SKU.test(s));\n}",
+  "fixed": "const SKU = /^[A-Z]{3}-\\d{4}$/;",
+  "explain": "With the `g` flag, `test()` is stateful via `lastIndex`: the second identical valid SKU returns false. Drop `g`.",
+  "options": [
+   "\\d should be [0-9]",
+   "The g flag makes test() remember lastIndex",
+   "^ and $ are not allowed together",
+   "map can't return booleans"
+  ],
+  "answer": 1,
+  "bugLine": 1
+ },
+ {
+  "id": "js-status-code",
+  "lang": "javascript",
+  "topic": "http",
+  "difficulty": "Easy",
+  "prompt": "Respond when a resource doesn't exist.",
+  "code": "app.get('/orders/:id', async (req, res) => {\n  const order = await Order.findById(req.params.id);\n  if (!order) return res.status(400).json({ message: 'Not found' });\n  res.json(order);\n});",
+  "fixed": "  if (!order) return res.status(404).json({ message: 'Not found' });",
+  "explain": "A missing resource is **404 Not Found**. 400 means the request itself was malformed.",
+  "options": [
+   "req.params.id is a number",
+   "Wrong status: missing resource is 404",
+   "findById needs .exec()",
+   "res.json can't send objects"
+  ],
+  "answer": 1,
+  "bugLine": 3
+ },
+ {
+  "id": "js-optional-chain",
+  "lang": "javascript",
+  "topic": "null safety",
+  "difficulty": "Easy",
+  "prompt": "Get the city or 'unknown'.",
+  "code": "function city(user) {\n  return user.address.city || 'unknown';\n}",
+  "fixed": "  return user.address?.city ?? 'unknown';",
+  "explain": "If `address` is missing this throws `Cannot read properties of undefined`. Use optional chaining.",
+  "options": [
+   "|| should be &&",
+   "Strings can't be returned",
+   "Throws when address is undefined",
+   "city is always a number"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "js-array-length-truthy",
+  "lang": "javascript",
+  "topic": "coercion",
+  "difficulty": "Easy",
+  "prompt": "Show 'empty' when there are no results.",
+  "code": "function label(results) {\n  if (!results) return 'empty';\n  return results.length + ' results';\n}",
+  "fixed": "  if (!results || results.length === 0) return 'empty';",
+  "explain": "An empty array is truthy in JS, so `![]` is false. Check `.length`.",
+  "options": [
+   "Should use ===",
+   "[] is truthy; check length",
+   "results may be a Set",
+   "length is a function"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "js-includes-nan",
+  "lang": "javascript",
+  "topic": "loops",
+  "difficulty": "Medium",
+  "prompt": "Return true if any reading is invalid (NaN).",
+  "code": "function anyInvalid(readings) {\n  return readings.indexOf(NaN) !== -1;\n}",
+  "fixed": "  return readings.some(Number.isNaN);",
+  "explain": "`indexOf` uses `===`, and `NaN !== NaN`, so it never finds NaN. Use `Number.isNaN` (or `includes`, which uses SameValueZero).",
+  "options": [
+   "readings must be sorted",
+   "indexOf can't find NaN because NaN !== NaN",
+   "-1 means found",
+   "indexOf returns a boolean"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "js-delete-array",
+  "lang": "javascript",
+  "topic": "arrays",
+  "difficulty": "Easy",
+  "prompt": "Remove the item at index i.",
+  "code": "function removeAt(arr, i) {\n  delete arr[i];\n  return arr;\n}",
+  "fixed": "  arr.splice(i, 1);",
+  "explain": "`delete` leaves a hole (`<empty>`) and doesn't change `length`. Use `splice`.",
+  "options": [
+   "arr is frozen",
+   "i must be negative",
+   "delete leaves a hole and keeps the length",
+   "Should return arr.length"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "js-async-try",
+  "lang": "javascript",
+  "topic": "async",
+  "difficulty": "Hard",
+  "prompt": "Catch errors from the payment call.",
+  "code": "async function pay(api, order) {\n  try {\n    return api.charge(order);\n  } catch (e) {\n    return { ok: false, error: e.message };\n  }\n}",
+  "fixed": "    return await api.charge(order);",
+  "explain": "`return promise` inside try exits the try block before the promise rejects, so the catch never runs. `return await` keeps the rejection inside the try.",
+  "options": [
+   "Without await, the rejection escapes the try/catch",
+   "catch needs a finally",
+   "async functions can't use try",
+   "api.charge must be bound"
+  ],
+  "answer": 0,
+  "bugLine": 3
+ },
+ {
+  "id": "py-mutable-default",
+  "lang": "python",
+  "topic": "functions",
+  "difficulty": "Easy",
+  "prompt": "Append a tag and return the list.",
+  "code": "def add_tag(tag, tags=[]):\n    tags.append(tag)\n    return tags",
+  "fixed": "def add_tag(tag, tags=None):",
+  "explain": "Default values are evaluated once. Every call without `tags` shares the same list. Use `None` and create a list inside.",
+  "options": [
+   "append returns a new list",
+   "tag must be a str",
+   "Mutable default list is shared across calls",
+   "return should be yield"
+  ],
+  "answer": 2,
+  "bugLine": 1
+ },
+ {
+  "id": "py-is-equality",
+  "lang": "python",
+  "topic": "equality",
+  "difficulty": "Easy",
+  "prompt": "Check the order status.",
+  "code": "def is_shipped(order):\n    return order.status is \"shipped\"",
+  "fixed": "    return order.status == \"shipped\"",
+  "explain": "`is` compares identity; strings built at runtime are distinct objects. Use `==`.",
+  "options": [
+   "`is` checks identity, not equality",
+   "status must be upper-case",
+   "Should use in",
+   "Strings are immutable"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "py-range-off",
+  "lang": "python",
+  "topic": "loops",
+  "difficulty": "Easy",
+  "prompt": "Sum the numbers 1..n inclusive.",
+  "code": "def total(n):\n    s = 0\n    for i in range(1, n):\n        s += i\n    return s",
+  "fixed": "    for i in range(1, n + 1):",
+  "explain": "`range(a, b)` excludes `b`.",
+  "options": [
+   "+= doesn't work on ints",
+   "s should start at 1",
+   "range needs a step",
+   "range excludes the stop value"
+  ],
+  "answer": 3,
+  "bugLine": 3
+ },
+ {
+  "id": "py-dict-iter-mutate",
+  "lang": "python",
+  "topic": "dicts",
+  "difficulty": "Medium",
+  "prompt": "Drop sessions that have expired.",
+  "code": "def prune(sessions, now):\n    for sid, exp in sessions.items():\n        if exp < now:\n            del sessions[sid]",
+  "fixed": "    for sid, exp in list(sessions.items()):",
+  "explain": "Deleting from a dict while iterating raises `RuntimeError: dictionary changed size during iteration`. Iterate over a snapshot.",
+  "options": [
+   "exp is a string",
+   "items() returns keys only",
+   "del can't delete dict keys",
+   "Mutating a dict while iterating it raises RuntimeError"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "py-int-div",
+  "lang": "python",
+  "topic": "math",
+  "difficulty": "Easy",
+  "prompt": "Average order value with decimals.",
+  "code": "def average(total, count):\n    return total // count",
+  "fixed": "    return total / count",
+  "explain": "`//` is floor division and drops the fraction.",
+  "options": [
+   "total must be Decimal",
+   "// floors the result",
+   "count may be zero (always)",
+   "return needs round()"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "py-late-binding",
+  "lang": "python",
+  "topic": "closures",
+  "difficulty": "Hard",
+  "prompt": "Build multipliers x1, x2, x3.",
+  "code": "def multipliers():\n    return [lambda x: x * i for i in range(1, 4)]",
+  "fixed": "    return [lambda x, i=i: x * i for i in range(1, 4)]",
+  "explain": "Closures bind variables late: all lambdas see the final `i = 3`. Capture it with a default arg.",
+  "options": [
+   "lambda can't use multiplication",
+   "List comprehensions can't contain lambdas",
+   "All lambdas capture the same final i",
+   "range should start at 0"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "py-copy-shallow",
+  "lang": "python",
+  "topic": "copying",
+  "difficulty": "Medium",
+  "prompt": "Copy a grid and modify the copy only.",
+  "code": "def with_mark(grid, r, c):\n    g = grid.copy()\n    g[r][c] = \"X\"\n    return g",
+  "fixed": "    g = [row[:] for row in grid]",
+  "explain": "`list.copy()` is shallow: inner row lists are shared, so the original grid changes too.",
+  "options": [
+   "grid must be a tuple",
+   "copy() returns None",
+   "Shallow copy shares the inner row lists",
+   "r and c are swapped"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "py-except-broad",
+  "lang": "python",
+  "topic": "errors",
+  "difficulty": "Medium",
+  "prompt": "Parse an int, default 0 for bad input.",
+  "code": "def to_int(s):\n    try:\n        return int(s)\n    except:\n        return 0",
+  "fixed": "    except (TypeError, ValueError):",
+  "explain": "A bare `except` also swallows KeyboardInterrupt/SystemExit and hides real bugs. Catch the specific errors.",
+  "options": [
+   "Should use finally",
+   "int() never raises",
+   "return in try is illegal",
+   "Bare except catches everything, including interrupts"
+  ],
+  "answer": 3,
+  "bugLine": 4
+ },
+ {
+  "id": "py-sort-return",
+  "lang": "python",
+  "topic": "lists",
+  "difficulty": "Easy",
+  "prompt": "Return names alphabetically.",
+  "code": "def sorted_names(names):\n    return names.sort()",
+  "fixed": "    return sorted(names)",
+  "explain": "`list.sort()` sorts in place and returns `None`.",
+  "options": [
+   "names must be a set",
+   "sort needs key=",
+   "list.sort() returns None",
+   "sort is descending"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "py-strip-chars",
+  "lang": "python",
+  "topic": "strings",
+  "difficulty": "Medium",
+  "prompt": "Remove the '.json' extension.",
+  "code": "def base(filename):\n    return filename.rstrip(\".json\")",
+  "fixed": "    return filename.removesuffix(\".json\")",
+  "explain": "`rstrip` removes any trailing **characters** in the set {. j s o n}: `'season.json'` → `'sea'`. Use `removesuffix`.",
+  "options": [
+   "Needs split('.')",
+   "filename is bytes",
+   "rstrip strips a character set, not a suffix",
+   "rstrip strips from the left"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "py-global-counter",
+  "lang": "python",
+  "topic": "scope",
+  "difficulty": "Medium",
+  "prompt": "Count calls to track().",
+  "code": "calls = 0\n\ndef track():\n    calls += 1\n    return calls",
+  "fixed": "    global calls\n    calls += 1",
+  "explain": "Assignment makes `calls` local to the function, so `+=` reads an unbound local → UnboundLocalError. Declare `global` (or use a class/closure).",
+  "options": [
+   "calls must be a list",
+   "Assigning makes calls a local: UnboundLocalError",
+   "Integers are immutable so += fails",
+   "Functions can't return globals"
+  ],
+  "answer": 1,
+  "bugLine": 4
+ },
+ {
+  "id": "py-generator-twice",
+  "lang": "python",
+  "topic": "generators",
+  "difficulty": "Medium",
+  "prompt": "Return min and max price.",
+  "code": "def min_max(products):\n    prices = (p.price for p in products)\n    return min(prices), max(prices)",
+  "fixed": "    prices = [p.price for p in products]",
+  "explain": "A generator can be consumed only once: `max()` gets an empty iterator and raises ValueError.",
+  "options": [
+   "Tuple return is invalid",
+   "price must be float",
+   "A generator is exhausted after min()",
+   "min can't take a generator"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "py-float-eq",
+  "lang": "python",
+  "topic": "math",
+  "difficulty": "Easy",
+  "prompt": "Check if the cart total is 0.3.",
+  "code": "def is_thirty_cents(a, b):\n    return a + b == 0.3",
+  "fixed": "    return math.isclose(a + b, 0.3)",
+  "explain": "`0.1 + 0.2 == 0.30000000000000004`. Compare floats with a tolerance (or use Decimal for money).",
+  "options": [
+   "Floating-point rounding makes exact == fail",
+   "0.3 is an int",
+   "Should use is",
+   "+ concatenates numbers"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "py-dict-get-default",
+  "lang": "python",
+  "topic": "dicts",
+  "difficulty": "Easy",
+  "prompt": "Count word frequencies.",
+  "code": "def freq(words):\n    counts = {}\n    for w in words:\n        counts[w] += 1\n    return counts",
+  "fixed": "        counts[w] = counts.get(w, 0) + 1",
+  "explain": "First access to a missing key raises KeyError. Use `.get(w, 0)`, `defaultdict(int)` or `Counter`.",
+  "options": [
+   "Missing key raises KeyError on +=",
+   "Dicts can't hold ints",
+   "words must be sorted",
+   "return should be counts.items()"
+  ],
+  "answer": 0,
+  "bugLine": 4
+ },
+ {
+  "id": "py-class-attr",
+  "lang": "python",
+  "topic": "classes",
+  "difficulty": "Medium",
+  "prompt": "Each cart has its own items.",
+  "code": "class Cart:\n    items = []\n\n    def add(self, sku):\n        self.items.append(sku)",
+  "fixed": "    def __init__(self):\n        self.items = []",
+  "explain": "A class attribute list is shared by **every** instance. Create it in `__init__`.",
+  "options": [
+   "items must be private",
+   "self is missing in add",
+   "Class-level list is shared by all instances",
+   "append is not a list method"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "py-binary-search",
+  "lang": "python",
+  "topic": "algorithms",
+  "difficulty": "Medium",
+  "prompt": "Find target index in a sorted list, -1 if absent.",
+  "code": "def search(a, t):\n    lo, hi = 0, len(a) - 1\n    while lo < hi:\n        mid = (lo + hi) // 2\n        if a[mid] == t: return mid\n        if a[mid] < t: lo = mid + 1\n        else: hi = mid - 1\n    return -1",
+  "fixed": "    while lo <= hi:",
+  "explain": "With an inclusive `hi`, the loop must run while `lo <= hi`; otherwise a single remaining candidate is never checked (e.g. the last element).",
+  "options": [
+   "Loop exits before checking the last candidate",
+   "// should be /",
+   "hi should be len(a)",
+   "mid can overflow"
+  ],
+  "answer": 0,
+  "bugLine": 3
+ },
+ {
+  "id": "py-any-all",
+  "lang": "python",
+  "topic": "logic",
+  "difficulty": "Easy",
+  "prompt": "True if every item is in stock.",
+  "code": "def all_in_stock(items):\n    return any(i.stock > 0 for i in items)",
+  "fixed": "    return all(i.stock > 0 for i in items)",
+  "explain": "`any` is true if at least one item matches. \"Every\" is `all`.",
+  "options": [
+   "any() should be all()",
+   "Generators can't be passed to any",
+   "stock is a string",
+   "Needs a list comprehension"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "py-time-tz",
+  "lang": "python",
+  "topic": "dates",
+  "difficulty": "Hard",
+  "prompt": "Is the coupon still valid (UTC expiry)?",
+  "code": "from datetime import datetime, timezone\n\ndef valid(expires_at_utc):\n    return datetime.now() < expires_at_utc",
+  "fixed": "    return datetime.now(timezone.utc) < expires_at_utc",
+  "explain": "`datetime.now()` is naive local time. Comparing it with an aware UTC datetime raises TypeError (and even naive-naive mixes timezones). Use `datetime.now(timezone.utc)`.",
+  "options": [
+   "Naive local time compared with an aware UTC datetime",
+   "expires_at must be a string",
+   "datetime can't be compared",
+   "Should use time.time()"
+  ],
+  "answer": 0,
+  "bugLine": 4
+ },
+ {
+  "id": "py-recursion-base",
+  "lang": "python",
+  "topic": "recursion",
+  "difficulty": "Easy",
+  "prompt": "Factorial of n.",
+  "code": "def fact(n):\n    if n == 1:\n        return 1\n    return n * fact(n - 1)",
+  "fixed": "    if n <= 1:",
+  "explain": "`fact(0)` never hits the base case and recurses forever (RecursionError).",
+  "options": [
+   "Should multiply by n+1",
+   "fact(0) never reaches the base case",
+   "Python has no recursion",
+   "return must be yield"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "py-enumerate-start",
+  "lang": "python",
+  "topic": "loops",
+  "difficulty": "Easy",
+  "prompt": "Print a 1-based numbered list.",
+  "code": "def numbered(items):\n    return [f\"{i}. {x}\" for i, x in enumerate(items)]",
+  "fixed": "    return [f\"{i}. {x}\" for i, x in enumerate(items, start=1)]",
+  "explain": "`enumerate` starts at 0 by default.",
+  "options": [
+   "enumerate starts at 0",
+   "f-strings can't use dots",
+   "Order of i, x is reversed",
+   "items must be a dict"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "java-string-eq",
+  "lang": "java",
+  "topic": "equality",
+  "difficulty": "Easy",
+  "prompt": "Check the user's role.",
+  "code": "boolean isAdmin(User u) {\n    return u.getRole() == \"ADMIN\";\n}",
+  "fixed": "    return \"ADMIN\".equals(u.getRole());",
+  "explain": "`==` compares references. Strings built at runtime (e.g. read from a DB) aren't interned. Use `.equals`, which is also null-safe when called on the literal.",
+  "options": [
+   "Strings must be char[]",
+   "getRole returns an enum",
+   "Needs a cast",
+   "== compares references, not string contents"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "java-int-overflow",
+  "lang": "java",
+  "topic": "math",
+  "difficulty": "Medium",
+  "prompt": "Midpoint for binary search.",
+  "code": "int mid(int lo, int hi) {\n    return (lo + hi) / 2;\n}",
+  "fixed": "    return lo + (hi - lo) / 2;",
+  "explain": "`lo + hi` can overflow `Integer.MAX_VALUE` for large indices and turn negative.",
+  "options": [
+   "Should return long always",
+   "Division by 2 truncates incorrectly",
+   "hi must be exclusive",
+   "lo + hi can overflow int"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "java-concurrent-mod",
+  "lang": "java",
+  "topic": "collections",
+  "difficulty": "Medium",
+  "prompt": "Remove expired items.",
+  "code": "void prune(List<Item> items) {\n    for (Item it : items) {\n        if (it.isExpired()) items.remove(it);\n    }\n}",
+  "fixed": "    items.removeIf(Item::isExpired);",
+  "explain": "Structurally modifying a list inside a for-each throws `ConcurrentModificationException`. Use an Iterator's remove or `removeIf`.",
+  "options": [
+   "isExpired must be static",
+   "List has no remove method",
+   "Removing during for-each throws ConcurrentModificationException",
+   "Should use an array"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "java-integer-cache",
+  "lang": "java",
+  "topic": "equality",
+  "difficulty": "Hard",
+  "prompt": "Compare two order quantities.",
+  "code": "boolean sameQty(Integer a, Integer b) {\n    return a == b;\n}",
+  "fixed": "    return Objects.equals(a, b);",
+  "explain": "Boxed `Integer` `==` compares references. It works for -128..127 (cache) and fails for larger values like 1000.",
+  "options": [
+   "== on Integer unboxes always",
+   "Needs compareTo > 0",
+   "Boxed Integers compared by reference (only cached -128..127 match)",
+   "Integers can't be null"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "java-hashcode",
+  "lang": "java",
+  "topic": "collections",
+  "difficulty": "Hard",
+  "prompt": "Use Point as a HashMap key.",
+  "code": "class Point {\n    final int x, y;\n    Point(int x, int y) { this.x = x; this.y = y; }\n    @Override public boolean equals(Object o) {\n        return o instanceof Point p && p.x == x && p.y == y;\n    }\n}",
+  "fixed": "    @Override public int hashCode() { return Objects.hash(x, y); }",
+  "explain": "Overriding `equals` without `hashCode` breaks hash collections: equal points land in different buckets, so `map.get(new Point(1,2))` returns null.",
+  "options": [
+   "equals is overridden without hashCode",
+   "Fields must not be final",
+   "Point must implement Comparable",
+   "instanceof can't bind variables"
+  ],
+  "answer": 0,
+  "bugLine": 6
+ },
+ {
+  "id": "java-switch-fallthrough",
+  "lang": "java",
+  "topic": "control flow",
+  "difficulty": "Easy",
+  "prompt": "Map a status code to a label.",
+  "code": "String label(int code) {\n    String s = \"unknown\";\n    switch (code) {\n        case 200: s = \"ok\";\n        case 404: s = \"missing\"; break;\n    }\n    return s;\n}",
+  "fixed": "        case 200: s = \"ok\"; break;",
+  "explain": "Without `break`, case 200 falls through into case 404, so 200 returns \"missing\".",
+  "options": [
+   "switch can't use ints",
+   "default is required",
+   "s must be final",
+   "Missing break causes fall-through"
+  ],
+  "answer": 3,
+  "bugLine": 4
+ },
+ {
+  "id": "java-optional-get",
+  "lang": "java",
+  "topic": "null safety",
+  "difficulty": "Medium",
+  "prompt": "Return the user's name or 'guest'.",
+  "code": "String name(Optional<User> u) {\n    return u.get().getName() != null ? u.get().getName() : \"guest\";\n}",
+  "fixed": "    return u.map(User::getName).orElse(\"guest\");",
+  "explain": "`Optional.get()` throws `NoSuchElementException` when empty, which defeats the point. Use `map(...).orElse(...)`.",
+  "options": [
+   "getName is static",
+   "Optional.get() throws when empty",
+   "Ternaries can't return strings",
+   "Optional can't hold User"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "java-bigdecimal",
+  "lang": "java",
+  "topic": "money",
+  "difficulty": "Medium",
+  "prompt": "Create an exact price of 0.10.",
+  "code": "BigDecimal price() {\n    return new BigDecimal(0.1);\n}",
+  "fixed": "    return new BigDecimal(\"0.1\");",
+  "explain": "`new BigDecimal(0.1)` captures the binary double: 0.1000000000000000055511151231257827… Use the String constructor or `BigDecimal.valueOf`.",
+  "options": [
+   "Needs setScale(0)",
+   "BigDecimal can't hold decimals",
+   "The double constructor captures the inexact binary value",
+   "Should use float"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "java-stream-reuse",
+  "lang": "java",
+  "topic": "streams",
+  "difficulty": "Medium",
+  "prompt": "Count and list adult users.",
+  "code": "List<User> adults(List<User> users) {\n    Stream<User> s = users.stream().filter(u -> u.age >= 18);\n    System.out.println(s.count());\n    return s.collect(Collectors.toList());\n}",
+  "fixed": "    return users.stream().filter(u -> u.age >= 18).collect(Collectors.toList());",
+  "explain": "A Stream can be consumed only once. After `count()`, `collect` throws IllegalStateException.",
+  "options": [
+   "count returns int",
+   "toList requires a size",
+   "Streams can't be reused after a terminal operation",
+   "filter needs a Predicate class"
+  ],
+  "answer": 2,
+  "bugLine": 4
+ },
+ {
+  "id": "java-sync",
+  "lang": "java",
+  "topic": "concurrency",
+  "difficulty": "Hard",
+  "prompt": "Thread-safe counter.",
+  "code": "class Counter {\n    private int n = 0;\n    public void inc() { n++; }\n    public synchronized int get() { return n; }\n}",
+  "fixed": "    public synchronized void inc() { n++; }",
+  "explain": "`n++` is read-modify-write, not atomic. Concurrent calls lose updates. Synchronise `inc` (or use AtomicInteger).",
+  "options": [
+   "n++ isn't atomic, so concurrent increments are lost",
+   "int can't be private",
+   "Should use volatile only",
+   "get must not be synchronized"
+  ],
+  "answer": 0,
+  "bugLine": 3
+ },
+ {
+  "id": "cpp-vector-index",
+  "lang": "cpp",
+  "topic": "bounds",
+  "difficulty": "Easy",
+  "prompt": "Sum all elements.",
+  "code": "int sum(const std::vector<int>& v) {\n    int s = 0;\n    for (size_t i = 0; i <= v.size(); ++i)\n        s += v[i];\n    return s;\n}",
+  "fixed": "    for (size_t i = 0; i < v.size(); ++i)",
+  "explain": "`<=` reads one past the end: undefined behaviour.",
+  "options": [
+   "++i should be i++",
+   "Loop reads past the end (<= size)",
+   "v must be non-const",
+   "size_t is signed"
+  ],
+  "answer": 1,
+  "bugLine": 3
+ },
+ {
+  "id": "cpp-unsigned-loop",
+  "lang": "cpp",
+  "topic": "types",
+  "difficulty": "Medium",
+  "prompt": "Iterate a vector backwards.",
+  "code": "void back(const std::vector<int>& v) {\n    for (size_t i = v.size() - 1; i >= 0; --i)\n        std::cout << v[i];\n}",
+  "fixed": "    for (size_t i = v.size(); i-- > 0;)",
+  "explain": "`size_t` is unsigned: `i >= 0` is always true and `0 - 1` wraps to a huge number. Infinite loop and out-of-bounds access (also when v is empty).",
+  "options": [
+   "--i is invalid",
+   "Unsigned i >= 0 is always true and wraps around",
+   "cout can't print ints",
+   "v.size() is signed"
+  ],
+  "answer": 1,
+  "bugLine": 2
+ },
+ {
+  "id": "cpp-dangling-ref",
+  "lang": "cpp",
+  "topic": "memory",
+  "difficulty": "Hard",
+  "prompt": "Return the user's display name.",
+  "code": "const std::string& displayName(const User& u) {\n    std::string name = u.first + \" \" + u.last;\n    return name;\n}",
+  "fixed": "std::string displayName(const User& u) { return u.first + \" \" + u.last; }",
+  "explain": "Returning a reference to a local variable leaves a dangling reference once the function returns. Return by value.",
+  "options": [
+   "Returns a reference to a destroyed local",
+   "+ can't join strings",
+   "Needs std::move",
+   "User must be passed by value"
+  ],
+  "answer": 0,
+  "bugLine": 3
+ },
+ {
+  "id": "cpp-int-division",
+  "lang": "cpp",
+  "topic": "math",
+  "difficulty": "Easy",
+  "prompt": "Percentage of passed tests.",
+  "code": "double pct(int passed, int total) {\n    return passed / total * 100.0;\n}",
+  "fixed": "    return 100.0 * passed / total;",
+  "explain": "`passed / total` is integer division (e.g. 3 / 4 == 0) before the multiplication.",
+  "options": [
+   "100.0 must be 100",
+   "total can't be int",
+   "Should return int",
+   "Integer division happens before converting to double"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "cpp-map-operator",
+  "lang": "cpp",
+  "topic": "containers",
+  "difficulty": "Medium",
+  "prompt": "Check whether a key exists without changing the map.",
+  "code": "bool has(std::map<std::string, int>& m, const std::string& k) {\n    return m[k] != 0;\n}",
+  "fixed": "    return m.find(k) != m.end();",
+  "explain": "`operator[]` **inserts** a default value when the key is missing, mutating the map, and a stored 0 looks like 'absent'. Use `find`/`count`/`contains`.",
+  "options": [
+   "operator[] inserts missing keys",
+   "m must be const",
+   "!= isn't defined for int",
+   "map keys must be ints"
+  ],
+  "answer": 0,
+  "bugLine": 2
+ },
+ {
+  "id": "cpp-iterator-invalidate",
+  "lang": "cpp",
+  "topic": "containers",
+  "difficulty": "Hard",
+  "prompt": "Erase all even numbers.",
+  "code": "void dropEven(std::vector<int>& v) {\n    for (auto it = v.begin(); it != v.end(); ++it)\n        if (*it % 2 == 0) v.erase(it);\n}",
+  "fixed": "    std::erase_if(v, [](int x){ return x % 2 == 0; });",
+  "explain": "`erase` invalidates `it`. Incrementing it afterwards is undefined behaviour. Use `it = v.erase(it)` without ++, or the erase-remove idiom.",
+  "options": [
+   "% doesn't work on negatives",
+   "vector has no erase",
+   "auto can't deduce iterators",
+   "erase invalidates the iterator that is then incremented"
+  ],
+  "answer": 3,
+  "bugLine": 3
+ },
+ {
+  "id": "cpp-uninit",
+  "lang": "cpp",
+  "topic": "initialisation",
+  "difficulty": "Easy",
+  "prompt": "Count positive numbers.",
+  "code": "int positives(const std::vector<int>& v) {\n    int count;\n    for (int x : v) if (x > 0) count++;\n    return count;\n}",
+  "fixed": "    int count = 0;",
+  "explain": "Local `int` isn't zero-initialised: it starts with garbage.",
+  "options": [
+   "Range-for can't take const&",
+   "x must be unsigned",
+   "++ is undefined for int",
+   "count is uninitialised"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "cpp-shared-ptr-cycle",
+  "lang": "cpp",
+  "topic": "memory",
+  "difficulty": "Hard",
+  "prompt": "Doubly linked nodes managed by smart pointers.",
+  "code": "struct Node {\n    std::shared_ptr<Node> next;\n    std::shared_ptr<Node> prev;\n};",
+  "fixed": "    std::weak_ptr<Node> prev;",
+  "explain": "Two shared_ptrs pointing at each other form a reference cycle: neither count reaches zero, so the nodes leak. Make the back-pointer a `weak_ptr`.",
+  "options": [
+   "shared_ptr cycle: nodes never freed",
+   "struct can't hold pointers",
+   "Must use unique_ptr for both",
+   "prev must be raw new"
+  ],
+  "answer": 0,
+  "bugLine": 3
+ },
+ {
+  "id": "cpp-string-compare-c",
+  "lang": "cpp",
+  "topic": "strings",
+  "difficulty": "Medium",
+  "prompt": "Compare two C strings.",
+  "code": "bool same(const char* a, const char* b) {\n    return a == b;\n}",
+  "fixed": "    return std::strcmp(a, b) == 0;",
+  "explain": "Comparing `const char*` compares the pointer addresses, not the characters.",
+  "options": [
+   "Should compare lengths",
+   "== is undefined for pointers",
+   "char can't be const",
+   "Pointer comparison, not content comparison"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ },
+ {
+  "id": "cpp-abs-overflow",
+  "lang": "cpp",
+  "topic": "math",
+  "difficulty": "Hard",
+  "prompt": "Distance between two ints.",
+  "code": "int dist(int a, int b) {\n    return std::abs(a - b);\n}",
+  "fixed": "    return static_cast<long long>(a) > b ? (long long)a - b : (long long)b - a;",
+  "explain": "`a - b` can overflow `int` (e.g. INT_MAX - (-1)), which is undefined behaviour before abs even runs. Widen first.",
+  "options": [
+   "b must be positive",
+   "Should return unsigned",
+   "a - b can overflow int before abs",
+   "abs only accepts doubles"
+  ],
+  "answer": 2,
+  "bugLine": 2
+ },
+ {
+  "id": "cpp-endl-loop",
+  "lang": "cpp",
+  "topic": "performance",
+  "difficulty": "Medium",
+  "prompt": "Print 1e6 lines quickly.",
+  "code": "void dump(const std::vector<int>& v) {\n    for (int x : v) std::cout << x << std::endl;\n}",
+  "fixed": "    for (int x : v) std::cout << x << '\\n';",
+  "explain": "`std::endl` flushes the stream every line, which is a classic reason a correct solution gets TLE. Use `'\\n'`.",
+  "options": [
+   "x must be long",
+   "Range-for copies the vector",
+   "cout can't print ints",
+   "std::endl flushes on every line (slow)"
+  ],
+  "answer": 3,
+  "bugLine": 2
+ }
+]
