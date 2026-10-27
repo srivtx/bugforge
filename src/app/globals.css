@@ -246,27 +246,29 @@ body {
   50% { transform: translateY(-5px); }
 }
 .iso-float { animation: iso-float 5s ease-in-out infinite; }
-.iso-shadow { opacity: 0.35; filter: blur(4px); }
+.iso-shadow { opacity: 0.22; }
 
-/* ---------------------------------------------------------------- page backdrop: drifting glows + grain */
+/* ---------------------------------------------------------------- page backdrop: drifting glows + grain
+   Glows are radial gradients (no filter: blur, no blend modes): Firefox repaints large animated
+   blur filters every frame, which can freeze or crash the tab. Only transform is animated. */
 .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--bg); }
-.backdrop > i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; will-change: transform; }
-.backdrop > i:nth-child(1) { width: 46vw; height: 46vw; top: -18vw; right: -10vw; background: color-mix(in oklab, var(--orange) 28%, transparent); animation: drift-a 26s ease-in-out infinite; }
-.backdrop > i:nth-child(2) { width: 40vw; height: 40vw; top: 25vh; left: -16vw; background: color-mix(in oklab, var(--violet) 24%, transparent); animation: drift-b 32s ease-in-out infinite; }
-.backdrop > i:nth-child(3) { width: 36vw; height: 36vw; bottom: -16vw; right: 18vw; background: color-mix(in oklab, var(--cyan) 20%, transparent); animation: drift-c 38s ease-in-out infinite; }
+.backdrop > i { position: absolute; border-radius: 50%; --g: transparent; background: radial-gradient(closest-side, var(--g), transparent); }
+.backdrop > i:nth-child(1) { width: 70vw; height: 70vw; top: -30vw; right: -22vw; --g: color-mix(in oklab, var(--orange) 16%, transparent); animation: drift-a 26s ease-in-out infinite; }
+.backdrop > i:nth-child(2) { width: 62vw; height: 62vw; top: 15vh; left: -28vw; --g: color-mix(in oklab, var(--violet) 13%, transparent); animation: drift-b 32s ease-in-out infinite; }
+.backdrop > i:nth-child(3) { width: 56vw; height: 56vw; bottom: -28vw; right: 8vw; --g: color-mix(in oklab, var(--cyan) 11%, transparent); animation: drift-c 38s ease-in-out infinite; }
 .backdrop::after {
-  content: ""; position: absolute; inset: 0; opacity: 0.07; mix-blend-mode: overlay;
+  content: ""; position: absolute; inset: 0; opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @keyframes drift-a { 50% { transform: translate(-8vw, 10vh) scale(1.1); } }
 @keyframes drift-b { 50% { transform: translate(10vw, -6vh) scale(0.92); } }
 @keyframes drift-c { 50% { transform: translate(-12vw, -8vh) scale(1.08); } }
 
-[data-theme="dark"] .backdrop > i:nth-child(2) { background: color-mix(in oklab, var(--rose) 14%, transparent); }
-[data-theme="dark"] .backdrop > i:nth-child(3) { background: color-mix(in oklab, var(--amber) 10%, transparent); }
+[data-theme="dark"] .backdrop > i:nth-child(2) { --g: color-mix(in oklab, var(--rose) 11%, transparent); }
+[data-theme="dark"] .backdrop > i:nth-child(3) { --g: color-mix(in oklab, var(--amber) 8%, transparent); }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .backdrop > i:nth-child(2) { background: color-mix(in oklab, var(--rose) 14%, transparent); }
-  :root:not([data-theme="light"]) .backdrop > i:nth-child(3) { background: color-mix(in oklab, var(--amber) 10%, transparent); }
+  :root:not([data-theme="light"]) .backdrop > i:nth-child(2) { --g: color-mix(in oklab, var(--rose) 11%, transparent); }
+  :root:not([data-theme="light"]) .backdrop > i:nth-child(3) { --g: color-mix(in oklab, var(--amber) 8%, transparent); }
 }
 
 @media (prefers-reduced-motion: reduce) {

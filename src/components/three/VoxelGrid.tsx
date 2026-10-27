@@ -2,7 +2,7 @@
 // 3D voxel grid for BFS / flood-fill frames: walls are tall blocks, visited cells rise by distance.
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, RoundedBox } from "@react-three/drei";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useTheme } from "@/lib/theme";
 
@@ -11,10 +11,11 @@ const WAVE = ["#ea3a6a", "#ff7a1a", "#e9a100", "#10a874", "#0aa6c9", "#6c5cf5", 
 function Voxel({ x, z, h, color, glow }: { x: number; z: number; h: number; color: string; glow: boolean }) {
   const ref = useRef<THREE.Group>(null!);
   const mat = useRef<THREE.MeshStandardMaterial>(null!);
+  const target = useMemo(() => new THREE.Color(color), [color]);
   useFrame((_, dt) => {
     const g = ref.current;
     g.scale.y += (h - g.scale.y) * Math.min(1, dt * 7);
-    mat.current.color.lerp(new THREE.Color(color), Math.min(1, dt * 6));
+    mat.current.color.lerp(target, Math.min(1, dt * 6));
   });
   return (
     <group ref={ref} position={[x, 0, z]} scale={[1, 0.05, 1]}>
@@ -32,7 +33,7 @@ export function VoxelGrid({ cells, dist, wave, islands }: { cells: (number | str
   const C = cells[0].length;
   const span = Math.max(R, C);
   return (
-    <Canvas camera={{ position: [span * 0.35, span * 0.75, span * 0.85], fov: 42 }} dpr={[1, 2]} gl={{ alpha: true, antialias: true }}>
+    <Canvas camera={{ position: [span * 0.35, span * 0.75, span * 0.85], fov: 42 }} dpr={[1, 1.5]} gl={{ alpha: true, antialias: true }}>
       <hemisphereLight args={["#ffffff", dark ? "#26231f" : "#b9ab95", 1.1]} />
       <directionalLight position={[5, 12, 6]} intensity={1.5} />
       <group position={[-(C - 1) / 2, 0, -(R - 1) / 2]}>

@@ -263,7 +263,7 @@ export function Flow3D({ trace, playKey, speed = 1.1 }: { trace: Trace; playKey:
   const n = trace.steps.length + 2;
   const dist = Math.max(18, n * 3.1);
   return (
-    <Canvas shadows camera={{ position: [0, dist * 0.62, dist * 0.92], fov: 38 }} dpr={[1, 2]} gl={{ alpha: true, antialias: true }}>
+    <Canvas shadows camera={{ position: [0, dist * 0.62, dist * 0.92], fov: 38 }} dpr={[1, 1.5]} gl={{ alpha: true, antialias: true }}>
       <FitCamera width={(n - 1) * SPACING + 5} />
       <hemisphereLight args={["#ffffff", theme === "dark" ? "#2a2622" : "#b9ab95", theme === "dark" ? 0.8 : 1.1]} />
       <directionalLight position={[6, 14, 8]} intensity={1.5} castShadow />

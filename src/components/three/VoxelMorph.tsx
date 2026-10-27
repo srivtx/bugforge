@@ -206,7 +206,7 @@ export function VoxelMorph({ interval = 3200, className, onShape }: { interval?:
       }}
       onClick={() => setIndex((i) => (i + 1) % SHAPES.length)}
     >
-      <Canvas camera={{ position: [0, 0, 21], fov: 42 }} dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
+      <Canvas camera={{ position: [0, 0, 21], fov: 42 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: true }}>
         <hemisphereLight args={["#ffffff", "#8a7a66", 1.1]} />
         <directionalLight position={[8, 12, 10]} intensity={1.6} />
         <directionalLight position={[-10, -4, 6]} intensity={0.35} color="#9f8cff" />

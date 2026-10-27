@@ -1,10 +1,11 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
-import { ArrowLeft, Play, Send, RotateCcw, BookOpen, Lightbulb, Boxes, KeyRound, Timer, CheckCircle2, XCircle, Clock, Trophy, Lock } from "lucide-react";
+import { ArrowLeft, Play, Send, RotateCcw, BookOpen, Lightbulb, Boxes, KeyRound, Timer, CheckCircle2, XCircle, Clock, Trophy, Lock, PanelLeftClose, ChevronDown, ChevronUp, ListChecks } from "lucide-react";
+import { usePanel, Splitter } from "@/components/Resizable";
 import type { Problem } from "@/lib/types";
 import { runCode, type CodeResult } from "@/lib/runners";
 import { compareOutput } from "@/lib/compare";
@@ -49,6 +50,10 @@ export function DsaWorkspace({ p }: { p: Problem }) {
   const [now, setNow] = useState(() => Date.now());
   const [solRevealed, setSolRevealed] = useState(false);
   const [lastMode, setLastMode] = useState<"run" | "submit">("run");
+  const leftPanel = usePanel("dsa-left", 560);
+  const bottomPanel = usePanel("dsa-bottom", 280);
+  const expandBottom = bottomPanel.setCollapsed;
+  const editorCol = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const d = loadDraft<Record<Lang, string>>(`dsa.${p.slug}`);
@@ -90,6 +95,7 @@ export function DsaWorkspace({ p }: { p: Problem }) {
     async (mode: "run" | "submit") => {
       if (busy) return;
       setBusy(mode);
+      expandBottom(false);
       setVerdict(null);
       setStatus(mode === "run" ? "Running examples…" : "Loading hidden tests…");
       let tests: Test[] = p.examples.map((e) => ({ input: e.input, output: e.output, kind: "example" }));
@@ -123,7 +129,7 @@ export function DsaWorkspace({ p }: { p: Problem }) {
           return { ...pr, problems: { ...pr.problems, [p.slug]: { status: v.kind === "accepted" || prev?.status === "solved" ? "solved" : "attempted", runs: (prev?.runs ?? 0) + 1, at: Date.now(), lang } } };
         });
     },
-    [busy, lang, code, p],
+    [busy, lang, code, p, expandBottom],
   );
 
   const reset = () => {
@@ -169,14 +175,26 @@ export function DsaWorkspace({ p }: { p: Problem }) {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* left: statement & learning */}
-        <section className="flex min-h-0 flex-col border-line lg:w-[46%] lg:border-r-2">
-          <div className="flex gap-1 overflow-x-auto border-b-2 border-line px-3 pt-2 scroll-thin">
+        {leftPanel.collapsed && (
+          <div className="hidden w-11 shrink-0 flex-col items-center gap-1 border-r-2 border-line py-2 lg:flex">
+            {tabs.map(([id, label, Icon]) => (
+              <button key={id} title={label} onClick={() => (setTab(id), leftPanel.setCollapsed(false))} className="rounded-lg p-2 text-muted hover:bg-panel-2 hover:text-text">
+                <Icon className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        )}
+        <section style={{ "--w": `${leftPanel.size}px` } as React.CSSProperties} className={clsx("flex min-h-0 flex-col border-line lg:w-[var(--w)] lg:shrink-0 lg:border-r-2", leftPanel.collapsed && "lg:hidden")}>
+          <div className="flex items-end gap-1 overflow-x-auto border-b-2 border-line px-3 pt-2 scroll-thin">
             {tabs.map(([id, label, Icon]) => (
               <button key={id} onClick={() => setTab(id)} className={clsx("flex shrink-0 items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm transition", tab === id ? "bg-panel-2 font-semibold text-text" : "text-muted hover:text-text")}>
                 <Icon className="h-4 w-4" />
                 {label}
               </button>
             ))}
+            <button title="Hide panel" onClick={() => leftPanel.setCollapsed(true)} className="mb-1 ml-auto hidden shrink-0 rounded-md p-1.5 text-dim hover:bg-panel-2 hover:text-text lg:block">
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-5 scroll-thin">
             {tab === "problem" && (
@@ -280,9 +298,10 @@ export function DsaWorkspace({ p }: { p: Problem }) {
               ))}
           </div>
         </section>
+        {!leftPanel.collapsed && <Splitter axis="x" className="hidden lg:block" size={leftPanel.size} min={300} max={() => Math.max(340, window.innerWidth * 0.6)} onSize={leftPanel.setSize} onReset={leftPanel.reset} />}
 
         {/* right: editor + results */}
-        <section className="flex min-h-[520px] min-w-0 flex-1 flex-col">
+        <section ref={editorCol} className="flex min-h-[520px] min-w-0 flex-1 flex-col">
           <div className="flex items-center gap-2 border-b-2 border-line bg-panel px-3 py-2">
             <div className="flex rounded-lg border-2 border-line bg-panel-2 p-0.5">
               {(["js", "py"] as Lang[]).map((l) => (
@@ -304,10 +323,22 @@ export function DsaWorkspace({ p }: { p: Problem }) {
               </Button>
             </div>
           </div>
-          <div className="min-h-[260px] flex-1">
+          <div className="min-h-[160px] flex-1">
             <CodeEditor key={lang} value={code[lang]} onChange={edit} language={lang === "py" ? "python" : "javascript"} path={`${p.slug}.${lang}`} onRun={() => exec("run")} />
           </div>
-          <div className="h-[38%] min-h-[200px] overflow-y-auto border-t-2 border-line bg-panel p-4 scroll-thin">
+          {!bottomPanel.collapsed && <Splitter axis="y" size={bottomPanel.size} min={120} max={() => (editorCol.current?.clientHeight ?? 600) - 140} onSize={bottomPanel.setSize} onReset={bottomPanel.reset} />}
+          <div style={bottomPanel.collapsed ? undefined : { height: bottomPanel.size }} className="flex min-h-0 shrink-0 flex-col border-t-2 border-line bg-panel">
+            <button onClick={bottomPanel.toggle} title={bottomPanel.collapsed ? "Show results" : "Hide results"} className="flex shrink-0 items-center gap-2 border-b border-line px-4 py-1.5 text-xs text-muted hover:text-text">
+              <ListChecks className="h-3.5 w-3.5" /> Results
+              {verdict && (
+                <span className={clsx("font-mono font-semibold", verdict.kind === "accepted" ? "text-mint" : verdict.kind === "tle" ? "text-amber" : "text-rose")}>
+                  {verdict.total ? `${verdict.passed}/${verdict.total}` : verdict.kind === "tle" ? "TLE" : "error"}
+                </span>
+              )}
+              <span className="ml-auto">{bottomPanel.collapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</span>
+            </button>
+            {!bottomPanel.collapsed && (
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 scroll-thin">
             {status && <div className="shimmer mb-3 rounded-lg px-3 py-2 text-sm text-muted">{status}</div>}
             {!verdict && !status && <div className="text-sm text-dim">Run checks the examples. Submit runs every hidden test ({p.testCount}, including large inputs that catch slow solutions).</div>}
             <AnimatePresence>
@@ -365,6 +396,8 @@ export function DsaWorkspace({ p }: { p: Problem }) {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+            )}
           </div>
         </section>
       </div>
